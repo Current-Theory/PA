@@ -49,6 +49,9 @@ TRY IT
 - Click a task to edit notes, status, due date, checklist and outcome.
 - Check a task to complete it; find it later under Completed.
 - Try Waiting, workstreams and Search. Refresh to check persistence.
+- Talk it through: copy the prepared prompt to ChatGPT, talk/type there,
+  then import its JSON reply and review the tasks before adding them.
+  ChatGPT/voice features need Internet access; the task app works offline.
 - Settings > Reset demo workspace restores the fictional examples.
 
 Keep using the same file location and browser profile. Demo tasks are saved

@@ -1,5 +1,6 @@
 import { dateKey } from '../lib/dates';
-import { workstreamDefaults, type Task, type TaskPatch, type TaskProvider } from '../lib/model';
+import { workstreamDefaults, type Task, type TaskDraft, type TaskPatch, type TaskProvider } from '../lib/model';
+import { parseTaskSuggestions } from '../lib/capture';
 import { seedTasks } from './seed';
 import { DemoStorage, type WorkspaceStorage, type WorkspaceSnapshot } from './storage';
 
@@ -44,6 +45,26 @@ export class MockTaskProvider implements TaskProvider {
         completionNote: '', focusDate: dateKey()
       };
       state.tasks.unshift(task); return task;
+    });
+  }
+  async capture(drafts: TaskDraft[]): Promise<Task[]> {
+    return this.mutate(state => {
+      // Validate the entire batch before writing; failures never leave half an import.
+      const proposal = parseTaskSuggestions({ tasks: drafts }, state.workstreams, state.workstreams[0]);
+      if (proposal.warnings.length) throw new Error('A selected workstream changed. Recheck the suggestions before importing.');
+      const created = proposal.tasks.map((draft): Task => {
+        const id = crypto.randomUUID();
+        return {
+          id, provider: 'mock', providerTaskId: id, title: draft.title, notes: draft.notes,
+          workstream: draft.workstream, status: draft.status, priority: draft.priority,
+          dueDate: draft.dueDate, createdAt: new Date().toISOString(), completedAt: null,
+          sourceType: 'Manual', sourceName: 'Assisted capture · reviewed by you',
+          checklist: draft.checklist.map(title => ({ id: crypto.randomUUID(), title, completed: false })),
+          resources: [], waitingFor: draft.waitingFor, followUpDate: draft.followUpDate,
+          completionNote: '', focusDate: draft.focusToday ? dateKey() : null
+        };
+      });
+      state.tasks.unshift(...created); return created;
     });
   }
   async update(task: Task, patch: TaskPatch): Promise<Task> {

@@ -7,6 +7,7 @@ Reference inspected: **EL 4204 – Electrical Apprentice Handbook (digital)**, S
 - Provisional tokens are in `src/styles.css`: navy `#102c37`, teal `#216d6b`, aqua `#72c9c3`, lime `#b8dd76`. These are interpretations and **are not official sampled corporate values**.
 - The app uses an available system sans-serif stack for reliable offline rendering and Windows integration. The handbook’s editorial serif titles were not copied into dense task controls.
 - The EarnLearn text wordmark and E/plus app icons are placeholders, not a reproduction of an approved corporate logo. Request approved SVG assets, fonts and brand specifications before organisational launch.
+- The refined wordmark gives Earn and Learn a small intentional gap, reduces the previous tight letter spacing, and aligns the Work Hub caption and plus accent; the application name is unchanged.
 - A deliberately compact sidebar and roomy rows support a work monitor, with a 450px desktop detail drawer and full-width narrow-screen drawer. Mobile navigation collapses.
 - Status is communicated using text and icons as well as colour. Lime is reserved for sparse focus/brand emphasis; primary action buttons use teal.
 

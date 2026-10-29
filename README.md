@@ -2,9 +2,13 @@
 
 A calm, responsive workspace for a Programme Manager’s working day. Built with React 19, TypeScript and Vite. **Stage 1 is a working demo. Stage 2 is an explicit integration scaffold, not a live Microsoft connection.**
 
+**New:** **Talk it through** beside quick capture opens assisted capture without leaving your workstream. Review/import ChatGPT task suggestions, keep the original context and find the resulting actions on Today. The download uses your existing ChatGPT account with copy/import; an optional server adapter supports automatic in-panel responses when securely configured. See [assisted capture](docs/assisted-capture.md).
+
 ![Today workspace](docs/screenshots/today.png)
 
 [Task details](docs/screenshots/task-details.png) · [Mobile layout](docs/screenshots/mobile.png)
+
+[Assisted capture review](docs/screenshots/capture-assistant.png) · [Mobile capture](docs/screenshots/capture-mobile.png)
 
 ## Run it
 
@@ -14,6 +18,7 @@ Requires Node.js 22.12 LTS or Node 24 LTS (recommended, pinned in `.nvmrc`) and 
 
 ```sh
 npm ci
+npm ci --prefix api
 npm run dev
 ```
 
@@ -33,6 +38,7 @@ Production output is `dist/`. Preview serves that output, including the service 
 
 - **Today:** date/greeting, deliberate daily focus, due tasks, overdue tasks, waiting/follow-up and upcoming preview. Focus expires with the calendar day. The star toggles focus; quickly captured tasks enter today’s focus automatically.
 - **Capture:** type a title and press Enter, then add details when ready.
+- **Assisted capture:** type/dictate context, use the prepared ChatGPT prompt and review/import JSON suggestions. Tasks inherit the chosen workstream, can be individually mapped to other configured workstreams, and are added to Today only when selected. Batch imports are atomic. Optional automatic suggestions use a server-side OpenAI connection; no key is stored in the browser.
 - **Details:** editable title, status, priority, workstream, due date, waiting contact/date, notes, checklist, completion outcome and resource links. Use **Save changes** to retain edits. Closing without saving discards edits.
 - **Completion:** row checkboxes save to the original provider, show a short completion transition, and offer Undo. Completion retains the record. Complete from the drawer to add an outcome first. Completed tasks can be reopened.
 - **History:** full-text search over titles, notes, outcomes, checklist text, resource names, people and source context; workstream, source and inclusive completion-date filters.
@@ -64,6 +70,8 @@ src/
 tests/                     Provider regression and production-browser tests
 build/pwa.ts               Native static-shell service-worker generation
 docs/                      Integration, hosting and visual decisions
+server/                    Loopback adapter and shared Responses API service
+api/                       Role-protected Azure managed Functions deployment
 ```
 
 The UI consumes normalized tasks through `TaskHub`. A task retains `provider`, `providerTaskId`, optional list ID and ETag. Live IDs must be namespaced for UI uniqueness while preserving Microsoft IDs unchanged for writes; never copy Planner tasks into To Do to display them.
@@ -74,7 +82,7 @@ Providers advertise writable fields. The drawer disables unsupported fields and 
 
 ## Demo storage and security
 
-Demo tasks are saved **only in this browser’s IndexedDB** so reloads preserve evaluation work. They are not synced, backed up, encrypted by this application or available on other devices. Treat the demo as disposable and do not enter confidential information. The app says this prominently. Settings can reset it; clearing site data also removes it. Task content is not put in localStorage, analytics, AI requests or production logs.
+Demo tasks are saved **only in this browser’s IndexedDB** so reloads preserve evaluation work. They are not synced, backed up, encrypted by this application or available on other devices. Treat the demo as disposable and do not enter confidential information. The app says this prominently. Settings can reset it; clearing site data also removes it. Task content is not put in localStorage, analytics or production logs. Assisted capture sends only the note and workstream context when you explicitly choose **Suggest tasks** on a configured server; copy/import sends nothing automatically. See the [AI data boundary](docs/assisted-capture.md).
 
 This is not an authenticated production work-data deployment. Microsoft task storage must remain separate from demo storage. The prepared MSAL client uses in-memory token caching and no client secret. A service worker caches static assets only. User resource links allow http/https only and external links use `noopener noreferrer`. Hosting headers provide CSP and other baseline protections.
 

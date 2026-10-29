@@ -1,8 +1,11 @@
 node_modules/
 dist/
 dist-portable/
+api/dist/
+api/local.settings.json
 .env
 .env.local
+.env.server
 .env.*.local
 *.tsbuildinfo
 playwright-report/

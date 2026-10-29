@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "ai:server": "node --env-file-if-exists=.env.server --use-env-proxy server/index.ts",
     "build": "tsc -b && vite build",
     "build:portable": "tsc -b && node scripts/build-portable.ts",
     "preview": "vite preview --host 0.0.0.0",

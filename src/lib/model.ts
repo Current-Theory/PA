@@ -41,7 +41,20 @@ export interface TaskProvider {
   readonly capabilities: ProviderCapabilities;
   list(): Promise<Task[]>;
   create(title: string, workstream?: string): Promise<Task>;
+  capture?(drafts: TaskDraft[]): Promise<Task[]>;
   update(task: Task, patch: TaskPatch): Promise<Task>;
+}
+export interface TaskDraft {
+  title: string;
+  notes: string;
+  workstream: string;
+  status: Exclude<TaskStatus, 'completed'>;
+  priority: Priority;
+  dueDate: string | null;
+  waitingFor: string;
+  followUpDate: string | null;
+  checklist: string[];
+  focusToday: boolean;
 }
 export const workstreamDefaults = [
   'Programme Delivery', 'Assessment & Content', 'Regulatory & Quality',

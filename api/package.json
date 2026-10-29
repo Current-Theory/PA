@@ -1,0 +1,10 @@
+{
+  "name": "earnlearn-work-hub-api",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "main": "dist/index.cjs",
+  "scripts": { "build": "node build.ts" },
+  "dependencies": { "@azure/functions": "^4.7.0" },
+  "devDependencies": { "esbuild": "^0.25.0" }
+}

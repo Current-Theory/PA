@@ -1,5 +1,18 @@
 # Validated delivery
 
+## Assisted capture and wordmark — 30 October 2026
+
+- Lint, strict typecheck, production build and the Azure managed API bundle passed.
+- The API's frozen-lockfile dependency installation passed; its dependency audit reported zero known vulnerabilities.
+- **23 domain/API tests passed**: proposal parsing/validation, canonical and atomic capture, retained notes/checklists, local server boundaries, and hosted role/origin/per-user limits.
+- **22 browser tests passed; 1 direct file-navigation test skipped** because the managed Chromium URL policy blocks `file://`, as documented below. The packaged HTML was still exercised separately over loopback with no external subresources.
+- Browser coverage includes importing the package-design/QA example, staying on the current workstream, review before saving, Today placement, selected-workstream quick capture, microphone refusal, multiple final speech segments, stale-proposal invalidation, JSON-file import, mobile accessibility and separate-tab hosted sign-in with note preservation.
+- The native Node adapter was started successfully; its live status reported `ready: false` and capture returned HTTP 503 with no API key, instead of pretending to generate suggestions.
+- OpenAI request/response and speech tests used controlled fixtures. A real microphone session, real OpenAI model response, Azure gateway sign-in and Azure deployment were **not** validated: no API key or Azure deployment identity/target was supplied.
+- Automatic API return has implemented frontend/server/managed-Azure code, but is not live. The portable download offers the existing-account ChatGPT copy/import fallback.
+
+Refinements from testing: quick capture respects the chosen workstream; multiple speech segments append correctly; modifying the original note invalidates old proposals; successfully imported JSON collapses into a compact confirmation so the review takes precedence; an invalid draft or failed write creates no partial batch. The Work Hub name remains unchanged and the EarnLearn placeholder wordmark spacing has been improved.
+
 ## Downloadable demo — 30 October 2026
 
 The ready-to-open ZIP is in `downloads/EarnLearn-Work-Hub.zip`. Its exact embedded HTML was extracted and tested through a loopback harness: capture, notes, outcome, completion history and persistence passed, including editing while browser networking was offline. No external scripts, styles, fonts or other subresources were requested. ZIP extraction and Windows-safe filenames passed. Runtime notices are included in the archive.

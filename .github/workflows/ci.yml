@@ -14,7 +14,12 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
       - run: npm ci
+      - run: npm ci --prefix api
+      - run: npm run build --prefix api
       - run: npm run check
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
