@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "EarnLearn Work Hub",
+  "short_name": "Work Hub",
+  "description": "Your work, in focus.",
+  "lang": "en-NZ",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8f8",
+  "theme_color": "#102c37",
+  "icons": [
+    { "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/pwa-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
