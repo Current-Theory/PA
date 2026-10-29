@@ -8,6 +8,8 @@ A calm, responsive workspace for a Programme Manager’s working day. Built with
 
 ## Run it
 
+**Want to use the app without installing developer tools?** [Download the ready-to-open demo](https://github.com/Current-Theory/PA/raw/refs/heads/main/downloads/EarnLearn-Work-Hub.zip), extract it, then open **EarnLearn Work Hub.html** in Edge or Chrome. See [download instructions](downloads/README.md). This is the same working interface, using fictional local demo data.
+
 Requires Node.js 22.12 LTS or Node 24 LTS (recommended, pinned in `.nvmrc`) and npm.
 
 ```sh
@@ -105,7 +107,11 @@ With a preinstalled browser (as in this cloud environment):
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 ```
 
+If a managed browser policy explicitly blocks all `file://` URLs, set `PORTABLE_FILE_URL_BLOCKED=1`. This skips only the direct file-navigation check; the exact downloadable HTML still runs through a separate loopback harness, including offline editing and persisted history. Do not change corporate browser policy to run a test. The default CI leaves direct file testing enabled.
+
 The browser suite exercises capture/edit/complete/reopen and persistence, waiting follow-ups, workstream filtering, undo, unsafe-link rejection, dialog keyboard focus, desktop/mobile accessibility scans and a real offline PWA reload. Tests use isolated browser contexts and fictional data. Browser tests use the Pacific/Auckland timezone. Test reports and screenshots are generated under ignored `playwright-report/` and `test-results/`.
+
+`npm run test:e2e` also regenerates the downloadable ZIP and tests the packaged HTML’s workflow and ZIP extraction. `npm run build:portable` produces the single-file HTML under ignored `dist-portable/` and the distributable under `downloads/`.
 
 Automated accessibility checks are a baseline, not a claim of full WCAG conformance. Manual screen-reader checks, actual Edge/Surface testing and organisational security review remain release checks for a live deployment.
 

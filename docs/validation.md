@@ -1,5 +1,15 @@
 # Validated delivery
 
+## Downloadable demo — 30 October 2026
+
+The ready-to-open ZIP is in `downloads/EarnLearn-Work-Hub.zip`. Its exact embedded HTML was extracted and tested through a loopback harness: capture, notes, outcome, completion history and persistence passed, including editing while browser networking was offline. No external scripts, styles, fonts or other subresources were requested. ZIP extraction and Windows-safe filenames passed. Runtime notices are included in the archive.
+
+The expanded browser run completed with **13 passed, 1 skipped**. Direct `file://` navigation is explicitly blocked by this cloud Chromium’s managed URL policy; that one test was skipped using `PORTABLE_FILE_URL_BLOCKED=1` after observing `ERR_BLOCKED_BY_ADMINISTRATOR`. No browser policy was changed. File-based launch itself remains unverified in this managed instance; normal CI leaves that test enabled. Organisational browser policies on the user’s device may also restrict file launch/storage.
+
+Lint, strict typecheck, eight provider/domain tests, production build and portable build passed. The dependency audit reported zero known vulnerabilities after adding the ZIP packager. Earlier hosted-build results remain below.
+
+## Initial hosted-build validation
+
 Validated on 29 October 2026 in the prepared cloud environment using Node 24.19.0, npm 11.9.0 and system Chromium 154.0.8037.57. Browser contexts used Pacific/Auckland for date-sensitive workflows.
 
 | Check | Result |

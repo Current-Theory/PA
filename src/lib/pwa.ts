@@ -2,7 +2,7 @@
 export function registerPwa(onUpdate: () => void): () => Promise<void> {
   let registration: ServiceWorkerRegistration | undefined;
   let applying = false;
-  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  if (import.meta.env.PROD && import.meta.env.VITE_PORTABLE !== 'true' && /^https?:$/.test(window.location.protocol) && 'serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (applying) window.location.reload();
     });
