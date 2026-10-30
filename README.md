@@ -12,6 +12,8 @@ The example conversation above uses controlled responses from the local browser 
 
 ## Run locally
 
+For exact private key configuration, Git-ignore verification and a personal acceptance checklist, see [local setup and validation](docs/local-validation.md).
+
 Node 24 is recommended (`.nvmrc`). Use the existing isolated checkout; do not create a worktree unless explicitly requested.
 
 ```sh

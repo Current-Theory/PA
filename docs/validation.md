@@ -1,5 +1,17 @@
 # Validated delivery
 
+## Local readiness recheck — 30 October 2026
+
+The existing configuration was inspected and the full available suite rerun before any Azure deployment. [Exact local setup and personal acceptance checklist](local-validation.md).
+
+- Lint, strict types, all **38 domain/API tests**, UI/PWA production build and the managed API bundle passed again.
+- **24 browser tests passed, 1 skipped** under the documented managed `file://` policy; the ZIP's exact HTML passed through the loopback harness.
+- Root and API audits each reported **zero known vulnerabilities**.
+- Both native startup commands ran successfully on loopback. The live Vite-proxied status returned HTTP 200 with `ready: false`; keyless chat returned HTTP 503; an unapproved origin returned HTTP 403.
+- HTTP access to the actual private `.env.server` was denied with HTTP 403. Git confirmed it is ignored and untracked. The empty local config was created without a key, with POSIX permissions `600`; it is not committed. Normal staging excludes it, although Git's deliberate force-add can override ignore rules.
+- No OpenAI key is configured in this workspace. Real model access/quota, physical microphone behaviour and the personal acceptance checklist remain unverified. Automated model/speech replies are fixtures. The currently applied cloud network policy also does not allow `api.openai.com`; that would need a supported environment configuration update before live AI testing in this cloud workspace. A developer's own computer needs ordinary approved HTTPS access to that API.
+- No Azure resource, binding or deployment was changed. The new local guide is documentation only; application behaviour is unchanged.
+
 ## Assistant-first evolution — 30 October 2026
 
 - Frozen root/API dependency installs passed. Lint, strict typecheck, the production UI/PWA build and the Azure managed API bundle passed.
