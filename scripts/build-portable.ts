@@ -49,9 +49,9 @@ TRY IT
 - Click a task to edit notes, status, due date, checklist and outcome.
 - Check a task to complete it; find it later under Completed.
 - Try Waiting, workstreams and Search. Refresh to check persistence.
-- Talk it through: copy the prepared prompt to ChatGPT, talk/type there,
-  then import its JSON reply and review the tasks before adding them.
-  ChatGPT/voice features need Internet access; the task app works offline.
+- The Assistant is embedded in the app. AI requires the hosted version
+  and its secure server-side API connection; this file never holds a key.
+  The manual task/project workspace remains available offline.
 - Settings > Reset demo workspace restores the fictional examples.
 
 Keep using the same file location and browser profile. Demo tasks are saved
@@ -69,7 +69,7 @@ Source and integration guide: https://github.com/Current-Theory/PA
 `;
 await writeFile(join(output, 'EarnLearn Work Hub.html'), html);
 await writeFile(join(output, 'START HERE.txt'), instructions);
-const runtimePackages = ['react', 'react-dom', 'scheduler', 'lucide-react', '@azure/msal-browser', '@azure/msal-react', '@azure/msal-common'];
+const runtimePackages = ['react', 'react-dom', 'scheduler', 'lucide-react', '@azure/msal-browser', '@azure/msal-react', '@azure/msal-common', 'zod'];
 const notices: string[] = [];
 for (const name of runtimePackages) {
   const metadata = JSON.parse(await readFile(join(root, 'node_modules', name, 'package.json'), 'utf8'));

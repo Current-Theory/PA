@@ -1,9 +1,26 @@
 # Azure hosting and later Teams personal tab
 
+## Minimum resource to create — final setup only
+
+Create **one Azure Static Web App** (`Microsoft.Web/staticSites`) with its **managed Azure Functions API**. A separate standalone Function App or database resource is not required for this implementation. Free is sufficient for a personal test with preconfigured Microsoft sign-in and manually invited roles; use Standard if EarnLearn requires a custom single-tenant authentication registration or other production features. Choose the subscription, resource group, name and region in your approved Azure account; none is preselected or fabricated here.
+
+Minimum binding/settings:
+
+1. Source: `Current-Theory/PA`, branch `main`. Use the prepared workflow template; it builds from this checkout, uploads `dist` and built `api`, and targets managed API runtime `node:22` (build runner Node 24).
+2. API application setting **`WORK_HUB_AI_KEY`**: an actual authorised OpenAI project key, entered securely. The app never creates or exposes one.
+3. API application setting **`WORK_HUB_AI_MODEL`**: a Responses/function-calling model available to that project; default `gpt-5-mini` is configurable and needs live verification.
+4. API application setting **`WORK_HUB_APP_ORIGIN`**: the exact HTTPS origin Azure gives the app, without a trailing slash. No guessed URL is supplied.
+5. Invite the intended Microsoft account with custom role **`work-hub-user`**. The gateway and handler both enforce it; anonymous or merely signed-in users cannot call the paid API.
+6. Put the actual deployment token issued by that Static Web App into the Actions secret **`AZURE_STATIC_WEB_APPS_API_TOKEN`**, as referenced by the template. Do not put a token or API key in a repository file or chat.
+
+Stop before binding/deploying until these resources and values exist. This repository contains no invented resource IDs, URLs, credentials or live deployment. The resource serves the UI and authenticated AI transport; task/project persistence remains in the user's browser IndexedDB, not an Azure database. A central/multi-device store would be a separately approved adapter.
+
+Microsoft's [plan comparison](https://learn.microsoft.com/azure/static-web-apps/plans) documents managed Functions and preconfigured/custom authentication choices. The official source was checked during implementation.
+
 ## Azure Static Web Apps
 
 1. Have EarnLearn IT approve an Azure subscription, region, resource group, environment/domain, repository access and deployment identity. No Azure credentials are required to run this demo locally.
-2. Create a Static Web App connected to this repository. The frontend builds from `/` into `dist`; the optional authenticated assistant backend is in `api/`. Build both with Node 24 using `npm ci && npm ci --prefix api && npm run build && npm run build --prefix api`. A static-only demo can omit the API, in which case copy/import still works.
+2. Create a Static Web App connected to this repository. The frontend builds from `/` into `dist`; the optional authenticated assistant backend is in `api/`. Build both with Node 24 using `npm ci && npm ci --prefix api && npm run build && npm run build --prefix api`. A static-only demo can omit the API, in which case manual workspace use still works, but connected AI is unavailable.
 3. Review the Azure-generated GitHub Actions workflow. Store its deployment token in the GitHub Actions secret Azure generates; never in `.env`, source code or chat. An organisation-approved OIDC deployment workflow can replace the generated token workflow.
 4. Use preview environments for review with fictional data. Production requires HTTPS. `public/staticwebapp.config.json` is copied into `dist` with baseline headers and static navigation fallback.
 5. For future live mode, set the three **public** `VITE_ENTRA_*` build values and rebuild, then register that exact hosted origin/redirect URI in Entra. Vite replaces these values at build time. Never put a client secret or token into any `VITE_` variable.
@@ -19,12 +36,12 @@ The frontend has no backend secrets. Demo content persists separately per browse
 Set these **API application settings**, never browser build variables:
 
 - `WORK_HUB_AI_KEY`: the authorised OpenAI project API key, stored securely.
-- `WORK_HUB_AI_MODEL`: a model supporting Responses structured output (default `gpt-5-mini`; verify availability).
+- `WORK_HUB_AI_MODEL`: a model supporting Responses function calling (default `gpt-5-mini`; verify availability).
 - `WORK_HUB_APP_ORIGIN`: the app's exact HTTPS origin, with no trailing slash.
 
 Use [the prepared deployment workflow](azure-deploy-workflow.yml) after an approved Static Web App and its deployment credential exist. It builds the frontend and API together from this checkout, then uploads `dist` and the built `api` directory with both platform build steps skipped. This avoids relying on an isolated API build to find shared TypeScript sources outside `api/`. Retain the API package/production dependencies and `host.json` in that upload. CI builds this API bundle, but does not prove an Azure deployment succeeded.
 
-In the hosted UI, sign in using the separate-tab link in the capture panel, return and choose **Check connection**, then explicitly send a note with **Suggest tasks**. Verify successful task suggestions, denied roles, wrong origins, throttling, billing and model access on the actual Azure origin before calling the connection live. No Azure target, deployment credential or API key was available in the implementation environment; these remain external prerequisites.
+In the hosted UI, sign in using the separate-tab link in the assistant panel, return and choose **Check connection**, then send a natural-language message. Verify successful tool calls and database-confirmed actions, denied roles, wrong origins, throttling, billing and model access on the actual Azure origin before calling the connection live. No Azure target, deployment credential or API key was available in the implementation environment; these remain external prerequisites.
 
 ## PWA operations
 

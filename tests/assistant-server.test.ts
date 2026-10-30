@@ -24,6 +24,15 @@ async function invoke(handler: ReturnType<typeof assistantHandler>, body: unknow
 }
 
 describe('server-side assistant boundary', () => {
+  it('routes conversational requests to function calling instead of proposal generation', async () => {
+    const handler = assistantHandler({ key: 'server-test-key', model: 'configured-model', allowedOrigins: ['http://localhost:5173'] }, async (_url, init) => {
+      expect(JSON.parse(init?.body as string)).toMatchObject({ tools: expect.arrayContaining([expect.objectContaining({ name: 'get_today_tasks' })]), parallel_tool_calls: false });
+      return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'function_call', call_id: 'today-1', name: 'get_today_tasks', arguments: '{}' }] }));
+    });
+    const body = { input: [{ role: 'user', content: 'What should I do today?' }], context: { today: '2026-10-30', timezone: 'Pacific/Auckland', workstream: 'Projects', workstreams: ['Projects'], recentTasks: [], recentProjects: [] } };
+    const result = await invoke(handler, body, { path: '/api/assistant/chat' });
+    expect(result.status).toBe(200); expect(result.data.calls[0].name).toBe('get_today_tasks');
+  });
   it('sends a structured Responses request with no client secret exposure or provider writes', async () => {
     let url = '', payload: Record<string, unknown> = {};
     const handler = assistantHandler({ key: 'server-test-key', model: 'configured-model', allowedOrigins: ['http://localhost:5173'] }, async (target, init) => {

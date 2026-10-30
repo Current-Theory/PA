@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/#today');
   await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: 'Getting your workspace ready' })).toHaveCount(0);
 });
@@ -188,11 +188,24 @@ test('production assets work under the Azure content security policy', async ({ 
         await route.fulfill({ response, headers: { ...response.headers(), ...headers } });
       } else await route.continue();
     });
-    await page.goto('http://127.0.0.1:4173/');
+    await page.goto('http://127.0.0.1:4173/#today');
     await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
     const capture = page.getByRole('textbox', { name: 'Quick capture task' });
     await capture.fill('Security policy smoke test'); await capture.press('Enter');
     await expect(page.getByRole('button', { name: 'Open Security policy smoke test', exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   } finally { await context.close(); }
+});
+
+test('manual deletion is recoverable without AI and retains notes', async ({ page }) => {
+  await page.getByRole('button', { name: 'Open Review Year 3 assessment wording', exact: true }).click();
+  const notes = await page.getByLabel('Task notes', { exact: true }).inputValue();
+  await page.getByRole('button', { name: 'Move task to Trash', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Review Year 3 assessment wording', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Trash', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Review Year 3 assessment wording', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Restore task', exact: true }).click();
+  await page.getByRole('link', { name: /^Today/ }).click();
+  await page.getByRole('button', { name: 'Open Review Year 3 assessment wording', exact: true }).click();
+  await expect(page.getByLabel('Task notes', { exact: true })).toHaveValue(notes);
 });

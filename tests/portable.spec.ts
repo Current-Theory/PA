@@ -39,7 +39,7 @@ test('the delivered ZIP opens as a local file, works offline and retains task hi
     const errors: string[] = [];
     page.on('request', request => { if (/^https?:/.test(request.url())) networkRequests.push(request.url()); });
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(pathToFileURL(filename).href);
+    await page.goto(pathToFileURL(filename).href + '#today');
     await exerciseTaskHistory(page, async () => { await page.reload(); });
     expect(networkRequests).toEqual([]);
     expect(errors).toEqual([]);
@@ -62,7 +62,7 @@ test('the exact packaged HTML needs no subresources and retains context through 
     const subresources: string[] = [], errors: string[] = [];
     page.on('request', request => { if (!request.isNavigationRequest() && !request.url().startsWith('data:')) subresources.push(request.url()); });
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(origin);
+    await page.goto(origin + '/#today');
     await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
     await context.setOffline(true);
     await exerciseTaskHistory(page, async () => {

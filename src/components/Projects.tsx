@@ -1,0 +1,10 @@
+import { FolderOpen, ArrowUpRight, MessageSquare } from 'lucide-react';
+import type { Project, Task } from '../lib/model';
+import { formatDate } from '../lib/dates';
+
+export function Projects({ projects, tasks, openTasks, discuss }: { projects: Project[]; tasks: Task[]; openTasks: (id: string) => void; discuss: (project: Project) => void }) {
+  return <><div className="workstream-intro"><FolderOpen size={21} /><p>Projects keep their own context, even when the conversation changes. Tell your assistant to create or update one.</p></div>{projects.length ? <div className="workstream-grid">{projects.map(project => {
+    const related = tasks.filter(task => task.projectId === project.id);
+    return <article className="workstream-card project-card" key={project.id}><div className="ws-card-top"><span className="workstream-symbol"><FolderOpen size={20} /></span><span className="project-status">{project.status === 'onHold' ? 'On hold' : project.status === 'completed' ? 'Completed' : 'Active'}</span></div><h2>{project.name}</h2><p className="project-context">{project.notes || 'No project notes yet.'}</p><p>{project.workstream}{project.dueDate ? ` · ${formatDate(project.dueDate)}` : ''}</p><p><strong>{related.filter(task => task.status !== 'completed').length}</strong> active · {related.filter(task => task.status === 'completed').length} completed</p><div className="workstream-card-actions"><button className="text-button" onClick={() => openTasks(project.id)}>View tasks<ArrowUpRight size={14} /></button><button className="text-button" onClick={() => discuss(project)}><MessageSquare size={14} />Discuss</button></div></article>;
+  })}</div> : <div className="empty-state"><FolderOpen size={29} /><h2>A place for the bigger pieces of work</h2><p>Try telling your assistant: “Create a Launchpad project and keep the marketing work together.”</p><button className="button primary" onClick={() => discuss({ id: '', name: '', notes: '', workstream: '', status: 'active', dueDate: null, createdAt: '', updatedAt: '', revision: 1 })}>Open assistant</button></div>}</>;
+}

@@ -1,4 +1,12 @@
-export interface WorkspaceSnapshot { tasks: import('../lib/model').Task[]; workstreams: string[] }
+export interface WorkspaceSnapshot {
+  version?: number;
+  tasks: import('../lib/model').Task[];
+  workstreams: string[];
+  projects?: import('../lib/model').Project[];
+  conversation?: import('../assistant/contracts').Conversation;
+  receipts?: Record<string, { fingerprint: string; result: unknown }>;
+  events?: import('../lib/model').WorkspaceEvent[];
+}
 export interface WorkspaceStorage {
   read(): Promise<WorkspaceSnapshot | undefined>;
   write(snapshot: WorkspaceSnapshot): Promise<void>;

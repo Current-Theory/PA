@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { Sun, ListTodo, CalendarDays, Clock3, CircleCheck, Layers, Search, Settings as SettingsIcon, ChevronRight, Plus, ArrowUpRight, Menu, X, Star, ArrowRight, Check, WifiOff, Download, RefreshCw, CircleHelp, Inbox, Sparkles, TriangleAlert } from 'lucide-react';
+import { Sun, ListTodo, CalendarDays, Clock3, CircleCheck, Layers, Search, Settings as SettingsIcon, ChevronRight, Plus, ArrowUpRight, Menu, X, Star, ArrowRight, Check, WifiOff, Download, RefreshCw, CircleHelp, Inbox, Sparkles, TriangleAlert, FolderOpen, Trash2 } from 'lucide-react';
 import { registerPwa } from './lib/pwa';
-import { MockTaskProvider } from './providers/MockTaskProvider';
+import { WorkspaceProvider } from './providers/WorkspaceProvider';
 import { TaskHub } from './providers/TaskHub';
-import { type Task, type TaskPatch, searchableText } from './lib/model';
+import { type Task, type TaskPatch, type Project, searchableText } from './lib/model';
 import { addDays, dateKey, formatDate, upcomingGroup } from './lib/dates';
 import { TaskRow } from './components/TaskRow';
 import { TaskDrawer } from './components/TaskDrawer';
@@ -12,11 +12,18 @@ import { emptyFilters, type FiltersState } from './lib/filters';
 import { Settings } from './components/Settings';
 import { Workstreams } from './components/Workstreams';
 import { useDialog } from './lib/useDialog';
-import { CaptureAssistant } from './components/CaptureAssistant';
+import { AssistantConversation, AssistantPanel } from './components/AssistantConversation';
+import { Projects } from './components/Projects';
+import { AssistantEngine } from './assistant/engine';
+import type { Conversation } from './assistant/contracts';
 
-const demo = new MockTaskProvider();
-const hub = new TaskHub([demo]);
+const workspace = new WorkspaceProvider();
+const hub = new TaskHub([workspace], 'local');
+const assistantEngine = new AssistantEngine(workspace);
 const pages = {
+  assistant: { label: 'Assistant', icon: Sparkles, subtitle: 'Tell me what’s happening. I’ll help keep the work in order.' },
+  projects: { label: 'Projects', icon: FolderOpen, subtitle: 'The bigger picture, with its context kept.' },
+  trash: { label: 'Trash', icon: Trash2, subtitle: 'Removed from your day, safely retained.' },
   today: { label: 'Today', icon: Sun, subtitle: 'A little clarity. A productive day.' },
   all: { label: 'All Tasks', icon: ListTodo, subtitle: 'Everything on your plate, in one place.' },
   upcoming: { label: 'Upcoming', icon: CalendarDays, subtitle: 'See what’s ahead. Give yourself room to prepare.' },
@@ -27,7 +34,7 @@ const pages = {
 };
 type Page = keyof typeof pages;
 interface InstallPrompt extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }
-function readPage(): Page { const key = window.location.hash.slice(1); return key in pages ? key as Page : 'today'; }
+function readPage(): Page { const key = window.location.hash.slice(1); return key in pages ? key as Page : 'assistant'; }
 
 export function App() {
   const [page, setPage] = useState<Page>(readPage);
@@ -46,7 +53,10 @@ export function App() {
   const [captureWorkstream, setCaptureWorkstream] = useState('');
   const [assistantWorkstream, setAssistantWorkstream] = useState('');
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [assistantNote, setAssistantNote] = useState('');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectFilter, setProjectFilter] = useState('');
+  const [trash, setTrash] = useState<Task[]>([]);
+  const [conversation, setConversation] = useState<Conversation>({ messages: [], recentTaskIds: [], recentProjectIds: [] });
   const [finishing, setFinishing] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; error?: boolean; task?: Task; undo?: () => Promise<void> } | null>(null);
   const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
@@ -60,8 +70,9 @@ export function App() {
   const closeMobileNav = useCallback(() => setMobileNav(false), []);
   const closeAssistant = useCallback(() => setAssistantOpen(false), []);
   const refresh = useCallback(async () => {
-    const [nextTasks, nextWorkstreams] = await Promise.all([hub.list(), demo.workstreams()]);
-    setTasks(nextTasks); setWorkstreams(nextWorkstreams);
+    const [nextTasks, snapshot] = await Promise.all([hub.list(), workspace.snapshot()]);
+    setTasks(nextTasks); setWorkstreams(snapshot.workstreams); setProjects(snapshot.projects ?? []);
+    setTrash(snapshot.tasks.filter(task => task.deletedAt)); setConversation(snapshot.conversation ?? { messages: [], recentTaskIds: [], recentProjectIds: [] });
   }, []);
   const load = useCallback(async () => {
     setLoading(true); setLoadError('');
@@ -70,7 +81,7 @@ export function App() {
   }, [refresh]);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    const listener = () => { setPage(readPage()); setFilters({ ...emptyFilters }); setMobileNav(false); setSelected(null); };
+    const listener = () => { setPage(readPage()); setFilters({ ...emptyFilters }); setMobileNav(false); setSelected(null); setAssistantOpen(false); setProjectFilter(''); };
     window.addEventListener('hashchange', listener); return () => window.removeEventListener('hashchange', listener);
   }, []);
   useEffect(() => {
@@ -90,7 +101,7 @@ export function App() {
     const timer = setTimeout(() => setToast(null), 9000); return () => clearTimeout(timer);
   }, [toast]);
   const navigate = useCallback((next: Page) => {
-    setPage(next); setFilters({ ...emptyFilters }); setMobileNav(false); setSelected(null);
+    setPage(next); setFilters({ ...emptyFilters }); setMobileNav(false); setSelected(null); setAssistantOpen(false); setProjectFilter('');
     window.history.replaceState(null, '', `#${next}`);
     window.scrollTo({ top: 0 });
   }, []);
@@ -100,11 +111,11 @@ export function App() {
       const target = event.target as HTMLElement;
       const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
       if ((event.ctrlKey || event.metaKey) && event.key === 'k') { event.preventDefault(); navigate('search'); setTimeout(() => document.getElementById('task-search')?.focus(), 50); }
-      else if (!typing && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'n') { event.preventDefault(); captureRef.current?.focus(); }
+      else if (!typing && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === 'n') { event.preventDefault(); (page === 'assistant' ? document.getElementById('assistant-message') : captureRef.current)?.focus(); }
       else if (event.key === 'Escape') setMobileNav(false);
     };
     window.addEventListener('keydown', shortcut); return () => window.removeEventListener('keydown', shortcut);
-  }, [navigate, selected, settings, assistantOpen]);
+  }, [navigate, selected, settings, assistantOpen, page]);
   const act = async (operation: () => Promise<void>): Promise<boolean> => {
     if (mutationLock.current) return false;
     mutationLock.current = true; setBusy(true);
@@ -132,7 +143,6 @@ export function App() {
   const currentCaptureWorkstream = filters.workstream || (workstreams.includes(captureWorkstream) ? captureWorkstream : workstreams[0]);
   const openAssistant = (workstream = currentCaptureWorkstream) => {
     setAssistantWorkstream(workstream); setCaptureWorkstream(workstream);
-    if (!assistantNote && capture) setAssistantNote(capture);
     setAssistantOpen(true);
   };
   const quickCapture = async (event: React.FormEvent) => {
@@ -152,6 +162,7 @@ export function App() {
   const completedToday = tasks.filter(t => t.status === 'completed' && t.completedAt && dateKey(new Date(t.completedAt)) === today).length;
   const counts: Partial<Record<Page, number>> = { today: focused.length, all: active.length, waiting: active.filter(t => t.status === 'waiting').length, completed: tasks.length - active.length };
   const matches = (task: Task) => {
+    if (projectFilter && task.projectId !== projectFilter) return false;
     if (filters.text && !searchableText(task).includes(filters.text.toLocaleLowerCase())) return false;
     if (filters.workstream && task.workstream !== filters.workstream) return false;
     if (filters.source && task.sourceType !== filters.source) return false;
@@ -178,22 +189,25 @@ export function App() {
     {mobileNav && <div className="mobile-backdrop" onClick={() => setMobileNav(false)} aria-hidden="true" />}
     {mobileNav && <MobileNavFocus navRef={navRef} close={closeMobileNav} />}
     <aside id="navigation" ref={navRef} tabIndex={-1} role={mobileNav ? 'dialog' : undefined} aria-modal={mobileNav ? true : undefined} className={`sidebar ${mobileNav ? 'is-open' : ''}`} aria-label="Workspace navigation">
-      <a className="brand" href="#today" onClick={e => { e.preventDefault(); navigate('today'); }} aria-label="EarnLearn Work Hub home"><span className="brand-word"><span>Earn</span><span>Learn</span><b aria-hidden="true">+</b></span><span className="brand-caption">WORK HUB</span></a>
+      <a className="brand" href="#assistant" onClick={e => { e.preventDefault(); navigate('assistant'); }} aria-label="EarnLearn Work Hub home"><span className="brand-word"><span>Earn</span><span>Learn</span><b aria-hidden="true">+</b></span><span className="brand-caption">WORK HUB</span></a>
       <button className="mobile-close icon-button" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={22} /></button>
       <div className="workspace-label"><span className="workspace-monogram">EL</span><div>My workspace<small>Programme management</small></div></div>
-      <span className="nav-eyebrow">YOUR WORK</span><nav aria-label="Main">{(['today', 'all', 'upcoming', 'waiting', 'completed', 'workstreams'] as Page[]).map(navLink)}</nav>
-      <div className="sidebar-bottom"><div className="sidebar-message"><span className="geometry-plus">+</span><p>Less noise.<br /><strong>More progress.</strong></p></div><nav aria-label="Tools">{navLink('search')}<button className="nav-item" onClick={() => { setSettings(true); setMobileNav(false); }}><SettingsIcon size={19} strokeWidth={1.7} /><span>Settings</span></button></nav><button className="sync-status" onClick={() => setSettings(true)}><span className={`status-dot ${offline ? 'offline' : ''}`} /><span>{offline ? 'Offline · demo available' : 'Demo workspace'}<small>{offline ? 'Microsoft sync unavailable' : 'Saved on this device'}</small></span><ChevronRight size={14} /></button></div>
+      <span className="nav-eyebrow">YOUR WORK</span><nav aria-label="Main">{(['assistant', 'today', 'all', 'upcoming', 'waiting', 'completed', 'projects', 'workstreams'] as Page[]).map(navLink)}</nav>
+      <div className="sidebar-bottom"><div className="sidebar-message"><span className="geometry-plus">+</span><p>Less noise.<br /><strong>More progress.</strong></p></div><nav aria-label="Tools">{navLink('search')}{navLink('trash')}<button className="nav-item" onClick={() => { setSettings(true); setMobileNav(false); }}><SettingsIcon size={19} strokeWidth={1.7} /><span>Settings</span></button></nav><button className="sync-status" onClick={() => setSettings(true)}><span className={`status-dot ${offline ? 'offline' : ''}`} /><span>{offline ? 'Offline · workspace available' : 'Local workspace'}<small>{offline ? 'AI connection unavailable' : 'Saved on this device'}</small></span><ChevronRight size={14} /></button></div>
     </aside>
     <div className="workspace">
-      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobileNav} aria-controls="navigation" onClick={() => setMobileNav(!mobileNav)}><Menu size={21} /></button><span>My workspace</span><ChevronRight size={13} /><strong>{pages[page].label}</strong></div><div className="topbar-right"><button className="demo-pill" onClick={() => setSettings(true)}><span />Demo mode<CircleHelp size={13} /></button><span className="topbar-divider" /><span className="profile-name">Ian Barnes<small>Programme Manager</small></span><span className="avatar" aria-label="Ian Barnes">IB</span></div></header>
-      {offline && <div className="connection-banner" role="status"><WifiOff size={16} />You’re offline. Your local demo is available. Live Microsoft data cannot sync.</div>}
+      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobileNav} aria-controls="navigation" onClick={() => setMobileNav(!mobileNav)}><Menu size={21} /></button><span>My workspace</span><ChevronRight size={13} /><strong>{pages[page].label}</strong></div><div className="topbar-right"><button className="demo-pill" onClick={() => setSettings(true)}><span />Device-local<CircleHelp size={13} /></button><span className="topbar-divider" /><span className="profile-name">Ian Barnes<small>Programme Manager</small></span><span className="avatar" aria-label="Ian Barnes">IB</span></div></header>
+      {offline && <div className="connection-banner" role="status"><WifiOff size={16} />You’re offline. Your local workspace is available. AI and cloud connections need the Internet.</div>}
       {updateAvailable && <div className="connection-banner"><RefreshCw size={16} />An update is ready. Save any open task before reloading.<button className="text-button" onClick={() => void updater.current?.()}>Reload app</button></div>}
       <main id="main" tabIndex={-1}>
-        <div className="page-heading"><div><div className="date-eyebrow">{new Intl.DateTimeFormat('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</div><h1>{page === 'today' ? <>Kia ora, Ian<span className="greeting-dot">.</span></> : pages[page].label}</h1><p>{page === 'today' ? <>Your work, <strong>in focus.</strong></> : pages[page].subtitle}</p></div><div className="heading-action">{page === 'today' && <span className="day-progress"><CircleCheck size={17} /><strong>{completedToday}</strong> completed today</span>}{installPrompt && <button className="button secondary install-button" onClick={async () => { await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}><Download size={16} />Install app</button>}</div></div>
-        <div className="demo-notice"><span className="demo-label">DEMO</span><span>A space to try things out. Fictional tasks, saved on this device. Please keep sensitive information out.</span><button className="text-button" onClick={() => setSettings(true)}>Connections<ArrowUpRight size={13} /></button></div>
-        <form className="quick-capture" onSubmit={e => void quickCapture(e)}><Plus size={23} aria-hidden="true" /><input ref={captureRef} aria-label="Quick capture task" value={capture} onChange={e => setCapture(e.target.value)} maxLength={500} placeholder="Add a task… clear your head, capture the next step." disabled={loading || !!loadError || busy} /><span className="capture-hint">Press <kbd>Enter ↵</kbd></span><button type="button" className="assistant-capture-button" aria-label="Capture with ChatGPT" onClick={() => openAssistant()} disabled={loading || !!loadError || busy}><Sparkles size={16} /><span>Talk it through</span></button><button type="submit" className="capture-submit" aria-label="Add task" disabled={!capture.trim() || busy}><ArrowRight size={18} /></button></form>
-        {!loading && !loadError && <div className="capture-context"><label>Capture into<select aria-label="Quick capture workstream" value={currentCaptureWorkstream} onChange={e => { setCaptureWorkstream(e.target.value); if (filters.workstream) setFilters(f => ({ ...f, workstream: e.target.value })); }}>{workstreams.map(w => <option key={w}>{w}</option>)}</select></label><span>Captured tasks appear in Focus Today.</span></div>}
+        <div className="page-heading"><div><div className="date-eyebrow">{new Intl.DateTimeFormat('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</div><h1>{(page === 'today' || page === 'assistant') ? <>Kia ora, Ian<span className="greeting-dot">.</span></> : pages[page].label}</h1><p>{page === 'today' ? <>Your work, <strong>in focus.</strong></> : pages[page].subtitle}</p></div><div className="heading-action">{page === 'today' && <span className="day-progress"><CircleCheck size={17} /><strong>{completedToday}</strong> completed today</span>}{installPrompt && <button className="button secondary install-button" onClick={async () => { await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}><Download size={16} />Install app</button>}</div></div>
+        <div className="demo-notice"><span className="demo-label">LOCAL</span><span>Your workspace is saved on this device. Fictional examples are included; use approved storage for confidential work.</span><button className="text-button" onClick={() => setSettings(true)}>Connections<ArrowUpRight size={13} /></button></div>
+        {page !== 'assistant' && <form className="quick-capture" onSubmit={e => void quickCapture(e)}><Plus size={23} aria-hidden="true" /><input ref={captureRef} aria-label="Quick capture task" value={capture} onChange={e => setCapture(e.target.value)} maxLength={500} placeholder="Add a task… clear your head, capture the next step." disabled={loading || !!loadError || busy} /><span className="capture-hint">Press <kbd>Enter ↵</kbd></span><button type="button" className="assistant-capture-button" aria-label="Talk to assistant" onClick={() => openAssistant()} disabled={loading || !!loadError || busy}><Sparkles size={16} /><span>Talk it through</span></button><button type="submit" className="capture-submit" aria-label="Add task" disabled={!capture.trim() || busy}><ArrowRight size={18} /></button></form>}
+        {page !== 'assistant' && !loading && !loadError && <div className="capture-context"><label>Capture into<select aria-label="Quick capture workstream" value={currentCaptureWorkstream} onChange={e => { setCaptureWorkstream(e.target.value); if (filters.workstream) setFilters(f => ({ ...f, workstream: e.target.value })); }}>{workstreams.map(w => <option key={w}>{w}</option>)}</select></label><span>Captured tasks appear in Focus Today.</span></div>}
         {loading ? <div className="loading-state" role="status"><span className="loading-ring" />Getting your workspace ready…</div> : loadError ? <div className="empty-state" role="alert"><WifiOff size={30} /><h2>We couldn’t open your workspace</h2><p>{loadError}</p><button className="button primary" onClick={() => void load()}>Try again</button></div> : <>
+          {page === 'assistant' && <AssistantConversation conversation={conversation} engine={assistantEngine} workspace={workspace} workstream={currentCaptureWorkstream} changed={refresh} openTask={setSelected} />}
+          {page === 'projects' && <Projects projects={projects} tasks={tasks} openTasks={id => { navigate('all'); setProjectFilter(id); }} discuss={project => { if (project.id) void workspace.saveConversation({ ...conversation, recentProjectIds: [project.id] }).then(refresh); openAssistant(project.workstream || currentCaptureWorkstream); }} />}
+          {page === 'trash' && <div className="task-list trash-list">{trash.length ? trash.map(task => <article className="trash-row" key={task.id}><div><h2>{task.title}</h2><p>{task.workstream} · {task.status === 'completed' ? 'Completed context retained' : 'Notes and checklist retained'}</p></div><button className="button secondary" disabled={busy} onClick={() => void act(async () => { await workspace.restoreTask(task.id); await refresh(); setToast({ message: 'Task restored with its context.' }); })}>Restore task</button></article>) : <Empty title="Trash is empty" text="Deleted tasks stay recoverable here." />}</div>}
           {page === 'today' && <div className="today-sections">
             {section('Focus Today', focused, <Star size={18} />, 'focus-section', 'A clear space for your priorities. Add a task above or use the star beside any task.', <span className="section-hint">Chosen by you</span>)}
             {section('Due Today', active.filter(t => t.dueDate === today && t.focusDate !== today && t.status !== 'waiting'), <CalendarDays size={18} />, '', 'Nothing else due today. A little breathing room.')}
@@ -203,6 +217,7 @@ export function App() {
             <div className="today-footer"><span className="footer-plus">+</span><p>One task at a time. You’re moving things forward.</p><span>EarnLearn Work Hub</span></div>
           </div>}
           {(page === 'all' || page === 'search' || page === 'completed') && <>
+            {projectFilter && <div className="project-filter-chip">Project: {projects.find(project => project.id === projectFilter)?.name}<button className="text-button" onClick={() => setProjectFilter('')}>Clear project filter<X size={12} /></button></div>}
             <Filters value={filters} change={setFilters} workstreams={workstreams} history={page === 'completed'} searchPage={page === 'search'} />
             {(() => {
               const list = tasks.filter(t => (page !== 'completed' || t.status === 'completed') && matches(t)).sort(page === 'completed' ? (a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '') : byDue);
@@ -217,13 +232,13 @@ export function App() {
             const waiting = active.filter(t => t.status === 'waiting');
             return waiting.length ? <><div className="waiting-intro"><Clock3 size={20} /><p>You’ve done your part. Keep track of what comes next.</p></div>{waiting.sort((a, b) => (a.followUpDate ?? '9999').localeCompare(b.followUpDate ?? '9999')).map(t => <section className="waiting-card" key={t.id}><div className="waiting-card-heading"><span><span className={`status-dot ${t.followUpDate && t.followUpDate <= today ? 'follow-up' : ''}`} />Waiting on <strong>{t.waitingFor || 'a response'}</strong></span><span className={t.followUpDate && t.followUpDate <= today ? 'follow-up-date' : ''}>{t.followUpDate ? `${t.followUpDate <= today ? 'Follow up · ' : 'Follow up '}${formatDate(t.followUpDate, today)}` : 'No follow-up set'}</span></div>{row(t)}{t.notes && <p className="waiting-context">{t.notes}</p>}</section>)}</> : <Empty title="Nothing waiting on someone else" text="Set a task to Waiting and add a follow-up date to keep it in view." />;
           })()}
-          {page === 'workstreams' && <Workstreams names={workstreams} tasks={tasks} busy={busy} capture={openAssistant} open={name => { navigate('all'); setCaptureWorkstream(name); setFilters({ ...emptyFilters, workstream: name }); }} add={name => act(async () => { await demo.addWorkstream(name); await refresh(); setToast({ message: 'Workstream added.' }); })} rename={(from, to) => act(async () => { await demo.renameWorkstream(from, to); await refresh(); setToast({ message: 'Workstream renamed. Tasks updated.' }); })} remove={name => act(async () => { await demo.removeWorkstream(name); await refresh(); setToast({ message: 'Empty workstream removed.' }); })} />}
+          {page === 'workstreams' && <Workstreams names={workstreams} tasks={tasks} busy={busy} capture={openAssistant} open={name => { navigate('all'); setCaptureWorkstream(name); setFilters({ ...emptyFilters, workstream: name }); }} add={name => act(async () => { await workspace.addWorkstream(name); await refresh(); setToast({ message: 'Workstream added.' }); })} rename={(from, to) => act(async () => { await workspace.renameWorkstream(from, to); await refresh(); setToast({ message: 'Workstream renamed. Tasks updated.' }); })} remove={name => act(async () => { await workspace.removeWorkstream(name); await refresh(); setToast({ message: 'Empty workstream removed.' }); })} />}
         </>}
       </main>
     </div>
-    {selected && <TaskDrawer key={selected.id} task={selected} workstreams={workstreams} today={today} fields={hub.provider(selected.provider).capabilities.writableFields} save={save} close={closeDrawer} busy={busy} />}
-    {assistantOpen && <CaptureAssistant note={assistantNote} setNote={setAssistantNote} initialWorkstream={assistantWorkstream} workstreams={workstreams} today={today} close={closeAssistant} capture={drafts => act(async () => { const created = await hub.capture(drafts); await refresh(); setCapture(''); const focusCount = created.filter(task => task.focusDate === today).length; setToast({ message: `${created.length} task${created.length === 1 ? '' : 's'} captured. ${focusCount} in Focus Today.` }); })} />}
-    {settings && <Settings close={closeSettings} offline={offline} reset={() => act(async () => { await demo.reset(); await refresh(); setFilters({ ...emptyFilters }); setToast({ message: 'Fictional demo workspace restored.' }); })} />}
+    {selected && <TaskDrawer key={selected.id} task={selected} projects={projects} workstreams={workstreams} today={today} fields={hub.capabilities(selected.provider).writableFields} save={save} remove={task => act(async () => { await workspace.trashTask(task); await refresh(); setToast({ message: 'Moved to Trash. Notes and history retained.', undo: async () => { await workspace.restoreTask(task.id); await refresh(); } }); })} close={closeDrawer} busy={busy} />}
+    {assistantOpen && <AssistantPanel close={closeAssistant} conversation={conversation} engine={assistantEngine} workspace={workspace} workstream={assistantWorkstream || currentCaptureWorkstream} changed={refresh} openTask={task => { setAssistantOpen(false); setSelected(task); }} />}
+    {settings && <Settings close={closeSettings} offline={offline} backup={async () => { await act(async () => { const state = await workspace.snapshot(); const blob = new Blob([JSON.stringify({ format: 'earnlearn-workspace', version: 2, exportedAt: new Date().toISOString(), tasks: state.tasks, projects: state.projects, workstreams: state.workstreams, events: state.events }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `work-hub-backup-${dateKey()}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }); }} reset={() => act(async () => { if (assistantEngine.isRunning) throw new Error('Stop the assistant before replacing the workspace.'); await workspace.reset(); await refresh(); setFilters({ ...emptyFilters }); setToast({ message: 'Fictional demo workspace restored.' }); })} />}
     {toast && <div className="toast" role={toast.error ? 'alert' : 'status'}>{toast.error ? <TriangleAlert size={17} /> : <Check size={17} />}<span>{toast.message}</span>{toast.task && <button onClick={() => { setSelected(toast.task!); setToast(null); }}>Add details</button>}{toast.undo && <button disabled={busy} onClick={() => void act(async () => { await toast.undo!(); setToast(null); })}>Undo</button>}<button className="icon-button" aria-label="Dismiss notification" onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div>;
 }

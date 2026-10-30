@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
 import { X, ExternalLink, Plus, Trash2, Check, Star, Link2, AlignLeft, ListChecks, CornerDownRight } from 'lucide-react';
-import { type Task, type TaskPatch, type TaskField, statusLabels, priorityLabels, safeUrl } from '../lib/model';
+import { type Task, type Project, type TaskPatch, type TaskField, statusLabels, priorityLabels, safeUrl } from '../lib/model';
 import { dateKey, formatDate } from '../lib/dates';
 import { useDialog } from '../lib/useDialog';
 import { SourceBadge } from './TaskRow';
 
-export function TaskDrawer({ task, workstreams, today, fields, save, close, busy }: {
-  task: Task; workstreams: string[]; today: string; fields: readonly TaskField[];
+export function TaskDrawer({ task, projects, workstreams, today, fields, save, remove, close, busy }: {
+  task: Task; projects: Project[]; workstreams: string[]; today: string; fields: readonly TaskField[];
   save: (task: Task, patch: TaskPatch) => Promise<boolean>; close: () => void; busy: boolean;
+  remove: (task: Task) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState<Task>(structuredClone(task));
   const [checkTitle, setCheckTitle] = useState('');
@@ -52,6 +53,7 @@ export function TaskDrawer({ task, workstreams, today, fields, save, close, busy
           <label>Priority<select aria-label="Priority" value={draft.priority} disabled={!can('priority')} onChange={e => update('priority', e.target.value as Task['priority'])}>{Object.entries(priorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>Due date<input type="date" value={draft.dueDate ?? ''} disabled={!can('dueDate')} onChange={e => update('dueDate', e.target.value || null)} /></label>
           <label>Workstream<select aria-label="Workstream" value={draft.workstream} disabled={!can('workstream')} onChange={e => update('workstream', e.target.value)}>{workstreams.map(w => <option key={w}>{w}</option>)}</select></label>
+          <label>Project<select aria-label="Project" value={draft.projectId ?? ''} disabled={!can('projectId')} onChange={event => update('projectId', event.target.value || null)}><option value="">No project</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
         </div>
         {draft.status === 'waiting' && <div className="waiting-box"><label>Waiting on<input placeholder="Person or team" maxLength={200} value={draft.waitingFor} disabled={!can('waitingFor')} onChange={e => update('waitingFor', e.target.value)} /></label><label>Follow-up date<input type="date" value={draft.followUpDate ?? ''} disabled={!can('followUpDate')} onChange={e => update('followUpDate', e.target.value || null)} /></label><p>When this date arrives, this task returns to Today.</p></div>}
         <section className="detail-section"><h3><AlignLeft size={16} />Notes</h3><label className="sr-only" htmlFor="task-notes">Task notes</label><textarea id="task-notes" rows={5} value={draft.notes} maxLength={30000} disabled={!can('notes')} placeholder="Keep the context. What do you need to know?" onChange={e => update('notes', e.target.value)} /></section>
@@ -64,10 +66,10 @@ export function TaskDrawer({ task, workstreams, today, fields, save, close, busy
           {draft.resources.map(resource => <div className="resource-row" key={resource.id}>{safeUrl(resource.url) ? <a href={safeUrl(resource.url)} target="_blank" rel="noopener noreferrer">{resource.title}<ExternalLink size={12} /></a> : <span>{resource.title} (invalid link)</span>}<button className="icon-button" aria-label={`Remove resource ${resource.title}`} disabled={!can('resources')} onClick={() => update('resources', draft.resources.filter(r => r.id !== resource.id))}><Trash2 size={13} /></button></div>)}
           {can('resources') && <div className="resource-inputs"><input aria-label="Resource title" placeholder="Link title" maxLength={200} value={linkTitle} onChange={e => setLinkTitle(e.target.value)} /><div className="inline-add"><input aria-label="Resource URL" type="url" placeholder="https://…" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} /><button className="icon-button" aria-label="Add resource" onClick={addLink}><Plus size={17} /></button></div></div>}
         </section>
-        <section className="source-context"><span className="eyebrow">ORIGINAL CONTEXT</span><p>{task.sourceName}</p>{task.sourceUrl && safeUrl(task.sourceUrl) && <a href={safeUrl(task.sourceUrl)} target="_blank" rel="noopener noreferrer">Open original <ExternalLink size={13} /></a>}<span className="field-hint">{task.provider === 'mock' ? 'Fictional demo task · saved on this device' : `Microsoft ${task.provider} · canonical source retained`}</span></section>
+        <section className="source-context"><span className="eyebrow">ORIGINAL CONTEXT</span><p>{task.sourceName}</p>{task.sourceUrl && safeUrl(task.sourceUrl) && <a href={safeUrl(task.sourceUrl)} target="_blank" rel="noopener noreferrer">Open original <ExternalLink size={13} /></a>}<span className="field-hint">{task.provider === 'local' ? 'Application workspace · saved on this device' : task.provider === 'mock' ? 'Fictional demo task · saved on this device' : `Microsoft ${task.provider} · canonical source retained`}</span></section>
         {error && <p role="alert" className="inline-error">{error}</p>}
       </div>
-      <footer className="drawer-footer"><button className="button secondary" disabled={busy} onClick={() => void persist()}>{busy ? 'Saving…' : 'Save changes'}</button>{draft.status !== 'completed' && <button className="button primary" disabled={busy || !can('status')} onClick={() => void persist(true)}><Check size={16} />Complete task</button>}</footer>
+      <footer className="drawer-footer"><button className="icon-button" aria-label="Move task to Trash" disabled={busy || task.provider !== 'local'} onClick={async () => { if (await remove(task)) close(); }}><Trash2 size={16} /></button><button className="button secondary" disabled={busy} onClick={() => void persist()}>{busy ? 'Saving…' : 'Save changes'}</button>{draft.status !== 'completed' && <button className="button primary" disabled={busy || !can('status')} onClick={() => void persist(true)}><Check size={16} />Complete task</button>}</footer>
     </aside>
   </div>;
 }

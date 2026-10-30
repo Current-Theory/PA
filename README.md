@@ -1,20 +1,18 @@
 # EarnLearn Work Hub
 
-A calm, responsive workspace for a Programme Manager’s working day. Built with React 19, TypeScript and Vite. **Stage 1 is a working demo. Stage 2 is an explicit integration scaffold, not a live Microsoft connection.**
+A personal AI management assistant for a Programme Manager. **Assistant is the primary home**: speak or type naturally, let the assistant use controlled application tools, then see confirmed changes in Today, tasks, projects and retained work history.
 
-**New:** **Talk it through** beside quick capture opens assisted capture without leaving your workstream. Review/import ChatGPT task suggestions, keep the original context and find the resulting actions on Today. The download uses your existing ChatGPT account with copy/import; an optional server adapter supports automatic in-panel responses when securely configured. See [assisted capture](docs/assisted-capture.md).
+This evolves the existing React/TypeScript/Vite application. The task UI, provider abstraction, IndexedDB data, voice support, PWA and secure server adapters are retained. [Audit and implementation decisions](docs/assistant-evolution-audit.md).
 
-![Today workspace](docs/screenshots/today.png)
+![Embedded assistant](docs/screenshots/assistant-desktop.png)
 
-[Task details](docs/screenshots/task-details.png) · [Mobile layout](docs/screenshots/mobile.png)
+The example conversation above uses controlled responses from the local browser tests. A live AI connection still requires the securely configured server.
 
-[Assisted capture review](docs/screenshots/capture-assistant.png) · [Mobile capture](docs/screenshots/capture-mobile.png)
+[Today](docs/screenshots/today.png) · [Task details](docs/screenshots/task-details.png) · [Mobile assistant](docs/screenshots/assistant-mobile.png)
 
-## Run it
+## Run locally
 
-**Want to use the app without installing developer tools?** [Download the ready-to-open demo](https://github.com/Current-Theory/PA/raw/refs/heads/main/downloads/EarnLearn-Work-Hub.zip), extract it, then open **EarnLearn Work Hub.html** in Edge or Chrome. See [download instructions](downloads/README.md). This is the same working interface, using fictional local demo data.
-
-Requires Node.js 22.12 LTS or Node 24 LTS (recommended, pinned in `.nvmrc`) and npm.
+Node 24 is recommended (`.nvmrc`). Use the existing isolated checkout; do not create a worktree unless explicitly requested.
 
 ```sh
 npm ci
@@ -22,107 +20,110 @@ npm ci --prefix api
 npm run dev
 ```
 
-Open the local address printed by Vite. No Microsoft credentials, backend, Teams host or `.env` file is required for the demo. This cloud environment already has an isolated checkout at `/workspace/PA`; use that checkout rather than creating a worktree.
+Manual task controls and stored project/history views work without AI credentials. For the embedded assistant, supply `WORK_HUB_AI_KEY` securely to the **server process**, or create the ignored `.env.server` from `.env.server.example` and fill it locally. Never put a real key in chat, a `VITE_` variable, the HTML download or a commit. In another terminal:
 
 ```sh
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm run preview
+npm run ai:server
 ```
 
-Production output is `dist/`. Preview serves that output, including the service worker. PWA installation and offline caching are available in a production build over HTTPS (or localhost). Dev mode deliberately does not install a service worker.
+The Node adapter binds to loopback 8787; Vite proxies `/api/assistant` to it. `WORK_HUB_AI_MODEL` selects a Responses/function-calling model (default `gpt-5-mini`; verify availability in the authorised project). Restart the adapter after changing injected configuration. OpenAI API usage has separate billing from ChatGPT subscriptions.
 
-## What works
+No Azure resource is needed for local development. No live key or deployment identity is supplied by this repository. Missing configuration is reported honestly; there is no simulated AI or external ChatGPT copy/import workflow.
 
-- **Today:** date/greeting, deliberate daily focus, due tasks, overdue tasks, waiting/follow-up and upcoming preview. Focus expires with the calendar day. The star toggles focus; quickly captured tasks enter today’s focus automatically.
-- **Capture:** type a title and press Enter, then add details when ready.
-- **Assisted capture:** type/dictate context, use the prepared ChatGPT prompt and review/import JSON suggestions. Tasks inherit the chosen workstream, can be individually mapped to other configured workstreams, and are added to Today only when selected. Batch imports are atomic. Optional automatic suggestions use a server-side OpenAI connection; no key is stored in the browser.
-- **Details:** editable title, status, priority, workstream, due date, waiting contact/date, notes, checklist, completion outcome and resource links. Use **Save changes** to retain edits. Closing without saving discards edits.
-- **Completion:** row checkboxes save to the original provider, show a short completion transition, and offer Undo. Completion retains the record. Complete from the drawer to add an outcome first. Completed tasks can be reopened.
-- **History:** full-text search over titles, notes, outcomes, checklist text, resource names, people and source context; workstream, source and inclusive completion-date filters.
-- **Waiting:** a dedicated list with who/when/context. Due follow-ups return to Today’s attention; tasks remain waiting until explicitly changed.
-- **Upcoming:** calendar-week groups, with overdue and today context; no project timeline machinery.
-- **All Tasks / Search:** text, source, workstream, priority, status and due-date filters. Search includes history by default; All Tasks defaults to active records.
-- **Workstreams:** add, rename and remove unused workstreams. Renaming updates active and historical tasks. Removal of used workstreams is blocked until their tasks are moved.
-- **PWA:** installable icons/manifest, production shell caching, update prompt, offline status. No Graph/auth response caching.
-- **Accessibility:** semantic controls, focus visibility, trapped/restored dialog focus, Escape to close, reduced motion, responsive mobile navigation and no colour-only status. `Ctrl/⌘ K` searches; `N` focuses capture outside editable controls.
-- **Settings:** honest connection status, storage explanation, keyboard help and confirmed demo reset.
+## Normal interaction
 
-All seed tasks are fictional. Their dates are relative to first use/reset, so there are useful examples whenever the application is evaluated. Source labels such as Outlook and Planner represent sample provenance, not fetched Microsoft records; no fabricated “open original” links are supplied.
+- “Review the Moodle questions next week, but it’s not urgent.” → create a persisted task, scheduling an explicit/default day and setting low priority.
+- “I’ve finished the Logan thing.” → look up the real task, clarify if needed, complete it and retain its notes/outcome.
+- “Move that review to Monday.” → use the conversation’s recent record reference and current revision to reschedule the same task.
+- “Check with Prakash before we do anything else.” → retain the person/context and waiting/follow-up state where appropriate.
+- “What do I actually need to get done today?” / “I’ve got too much on.” → read current workspace records and give a practical focus order.
+- “Create a Launchpad project and keep the marketing work together.” → persist a project with context and link its tasks.
 
-## Architecture
+The model handles language and intent. There is no regex-based pretend AI. Ambiguous records or materially unknown meeting dates require a concise clarification. Ordinary clear actions execute directly; forms are secondary. Confirmed action cards come from actual tool results, separately from the model’s prose.
+
+Browser dictation starts only when selected and may use the browser vendor’s online speech service. Type or use Windows dictation (`Win+H`) if unavailable. A real microphone/model response is not claimed merely because fixture-based tests pass.
+
+## Database is the source of truth
+
+The existing device-local IndexedDB is retained: `earnlearn-demo-v1` / `workspace` / `demo`. The snapshot evolves lazily to version 2 without replacing task IDs, provider task IDs, notes, checklist, completions or source context. Former mock records become application-local records; external Microsoft identifiers are not rewritten.
+
+Persisted independently of conversation text:
+
+- tasks, project links, due/follow-up/focus dates, priority, status, notes, checklist, resources and outcome;
+- projects with name, notes, workstream, status, dates and revisions;
+- recoverable Trash and action history;
+- revisions and durable action receipts that prevent retries creating duplicates.
+
+Conversation and interrupted-turn checkpoints are stored separately in the same snapshot. **New conversation never deletes task/project records.** A failed final model response can be resumed without repeating already committed actions. An interrupted request can also be stopped while retaining confirmed changes.
+
+Writes are queued, durable and revision checked. Local writes re-read the database, and browsers supporting Web Locks serialize writes across tabs. Other adapters can implement `WorkspaceStorage`; device-local storage is **not** a shared server database, multi-device sync or an organisational backup. Use one browser profile per person. Settings can download a readable JSON backup of records/history, excluding conversation state and credentials.
+
+The new source-of-truth principle supersedes the original Microsoft-first storage goal for this iteration. To Do/Planner provider scaffolds are retained, remain disabled, and are never described as live sync. [Historical Microsoft integration roadmap](docs/microsoft-integration.md).
+
+## Controlled AI action layer
+
+`server/chat.ts` uses OpenAI **Responses API function calling** with strict JSON schemas, explicit function-call outputs, `store: false`, and preserved reasoning continuation items for multi-step turns. The key stays server-side. `AssistantEngine` orchestrates bounded tool rounds; `ActionRuntime` validates arguments and executes whitelisted functions against the workspace. The AI has no SQL, eval, filesystem, mail-sending or arbitrary database tool.
+
+Supported tools:
+
+- `create_task`, `update_task`, `complete_task`, `reopen_task`, `delete_task`, `restore_task`
+- `add_task_note`, `reschedule_task`, `set_task_priority`, `assign_task_project`
+- `get_task`, `search_tasks`, `get_today_tasks`, `get_upcoming_tasks`, `get_overdue_tasks`, `get_waiting_tasks`, `get_completed_tasks`
+- `create_project`, `update_project`, `get_project_context`, `search_projects`
+
+Zod schemas are shared between server tool definitions and application validation. Writes require real records and fresh revisions. Ambiguous search results block arbitrary selection in that turn. Repeated tool/action IDs and identical same-turn mutations reuse receipts. Deletion is recoverable; restoring a completed task keeps its completion history. No model statement alone can change the database.
+
+Only the conversation, current calendar/workstream context, recent record references and records explicitly requested by tools are sent to the configured API. The whole task database is not uploaded on each message. Stored titles/notes/tool output are treated as data, not privileged instructions. No analytics or AI transcript/token logging is added.
+
+## Existing task UI remains useful
+
+Today, All Tasks, Upcoming, Waiting, Completed, Workstreams, search/filtering, task details, notes, checklists, safe resource links, completion undo and daily focus remain. Projects and Trash are now first-class views. Manual edits are revision checked, and manual delete/restore still work without AI.
+
+The interface is responsive, keyboard operable, reduced-motion aware and automatically scanned with axe. The name and refined EarnLearn placeholder branding are retained. Brand tokens need validation against official assets; [design reference](docs/design.md).
+
+## Structure
 
 ```text
-src/
-  App.tsx                 Navigation, workspace state and user actions
-  components/             Rows, drawer, filters, workstreams, settings
-  lib/model.ts            Normalized Task, patch types and capability contracts
-  lib/dates.ts            Local calendar-day calculations
-  lib/microsoft.ts        Explicit MSAL initialization and typed Graph v1.0 client
-  providers/
-    TaskHub.ts             Aggregates reads; routes writes to canonical provider
-    MockTaskProvider.ts    Transactional, serialized demo operations
-    MicrosoftProviders.ts Fail-closed To Do and Planner scaffolds
-    storage.ts             Demo-only IndexedDB persistence
-    seed.ts                Fictional examples
-tests/                     Provider regression and production-browser tests
-build/pwa.ts               Native static-shell service-worker generation
-docs/                      Integration, hosting and visual decisions
-server/                    Loopback adapter and shared Responses API service
-api/                       Role-protected Azure managed Functions deployment
+src/assistant/        Tool schemas, runtime, conversation engine and contracts
+src/providers/        Existing provider layer plus WorkspaceProvider/IndexedDB
+src/components/       Embedded conversation, task/detail/filter/project views
+src/lib/              Task/project model, local calendar dates, speech, MSAL scaffold
+server/               Loopback API, server-side Responses orchestration
+api/                  Role-protected Azure managed Functions adapter
+build/                Static-shell PWA generation
+scripts/              Portable single-file build
+tests/               Domain, transport, recovery and browser tests
 ```
-
-The UI consumes normalized tasks through `TaskHub`. A task retains `provider`, `providerTaskId`, optional list ID and ETag. Live IDs must be namespaced for UI uniqueness while preserving Microsoft IDs unchanged for writes; never copy Planner tasks into To Do to display them.
-
-Providers advertise writable fields. The drawer disables unsupported fields and the hub rejects unsupported patches rather than silently dropping them. The demo provider supports the complete model. Future live providers start with **no write capabilities** and throw `IntegrationNotImplementedError` on every operation until implemented and validated. Their constructors are never used by the demo.
-
-`focusDate` deliberately represents a local daily presentation choice, rather than Microsoft Planner’s beta My Day feature. Task content belongs in Microsoft 365 when live integration is added. Workstreams, waiting metadata and outcomes need an IT-approved metadata strategy where Graph lacks equivalent fields; see the integration guide.
-
-## Demo storage and security
-
-Demo tasks are saved **only in this browser’s IndexedDB** so reloads preserve evaluation work. They are not synced, backed up, encrypted by this application or available on other devices. Treat the demo as disposable and do not enter confidential information. The app says this prominently. Settings can reset it; clearing site data also removes it. Task content is not put in localStorage, analytics or production logs. Assisted capture sends only the note and workstream context when you explicitly choose **Suggest tasks** on a configured server; copy/import sends nothing automatically. See the [AI data boundary](docs/assisted-capture.md).
-
-This is not an authenticated production work-data deployment. Microsoft task storage must remain separate from demo storage. The prepared MSAL client uses in-memory token caching and no client secret. A service worker caches static assets only. User resource links allow http/https only and external links use `noopener noreferrer`. Hosting headers provide CSP and other baseline protections.
-
-## Microsoft integration
-
-See [Microsoft 365 integration and IT handoff](docs/microsoft-integration.md) for exact delegated permissions, v1.0 endpoints, unsupported fields and release gates. `.env.example` contains **public SPA identifiers only**:
-
-```sh
-cp .env.example .env.local
-# Fill in VITE_ENTRA_CLIENT_ID, VITE_ENTRA_TENANT_ID, VITE_ENTRA_REDIRECT_URI.
-```
-
-Setting these does **not** enable live mode. Settings reports their presence while continuing to state that providers are unimplemented. There is no fake sign-in button or successful connection state. MSAL Browser is prepared; `MsalProvider` from MSAL React can wrap the live app once the sign-in/account lifecycle is implemented. No Graph Toolkit or beta dependency is used.
-
-## Deployment and Teams
-
-See [Azure and Teams deployment](docs/deployment.md). The same static build can later be hosted as a Teams personal tab; normal browser use has no Teams dependency. No live Azure resource or public deployment has been created by this repository.
 
 ## Validation
 
 ```sh
-npm run check                 # lint, typecheck, 8 provider/domain tests, production build
+npm run check
+npm run build --prefix api
 npx playwright install chromium
-npm run test:e2e              # production build must already exist
+npm run test:e2e
 ```
 
-With a preinstalled browser (as in this cloud environment):
+In this cloud environment:
 
 ```sh
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+PORTABLE_FILE_URL_BLOCKED=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 ```
 
-If a managed browser policy explicitly blocks all `file://` URLs, set `PORTABLE_FILE_URL_BLOCKED=1`. This skips only the direct file-navigation check; the exact downloadable HTML still runs through a separate loopback harness, including offline editing and persisted history. Do not change corporate browser policy to run a test. The default CI leaves direct file testing enabled.
+The direct file-navigation test is explicitly skipped only when managed browser policy blocks `file://`; the exact archive is separately rendered through a loopback harness. API/voice fixtures exercise the actual database/action pipeline, not a live model/microphone. See [validation evidence](docs/validation.md). Actual Edge/Surface, microphone, real model, Azure gateway and security review remain device/service checks.
 
-The browser suite exercises capture/edit/complete/reopen and persistence, waiting follow-ups, workstream filtering, undo, unsafe-link rejection, dialog keyboard focus, desktop/mobile accessibility scans and a real offline PWA reload. Tests use isolated browser contexts and fictional data. Browser tests use the Pacific/Auckland timezone. Test reports and screenshots are generated under ignored `playwright-report/` and `test-results/`.
+## PWA / portable evaluation
 
-`npm run test:e2e` also regenerates the downloadable ZIP and tests the packaged HTML’s workflow and ZIP extraction. `npm run build:portable` produces the single-file HTML under ignored `dist-portable/` and the distributable under `downloads/`.
+```sh
+npm run build
+npm run preview
+npm run build:portable
+```
 
-Automated accessibility checks are a baseline, not a claim of full WCAG conformance. Manual screen-reader checks, actual Edge/Surface testing and organisational security review remain release checks for a live deployment.
+The hosted production build is installable and caches its static shell only; API/auth responses are never cached. Offline mode clearly disables AI connectivity while records remain available.
 
-## Design reference
+[Download the current portable UI](https://github.com/Current-Theory/PA/raw/refs/heads/main/downloads/EarnLearn-Work-Hub.zip), extract it and open **EarnLearn Work Hub.html** in Edge/Chrome. It preserves manual workspace use and the assistant interface, but **cannot run secure AI without a hosted backend**. It contains no key and offers no external ChatGPT import workaround. Keep the same file location/profile to retain existing records.
 
-The supplied **EL 4204 – Electrical Apprentice Handbook (digital), September 2026**, cover and contents page were visually inspected. See [design decisions](docs/design.md). CSS tokens are provisional interpretations, not official corporate hex values. The wordmark is typographic placeholder branding pending approved assets; the supplied PDF is not redistributed in this repository.
+## Final Azure setup, intentionally unbound
+
+No Azure resource, URL, resource ID, credential or deployment was invented. Create **Azure Static Web Apps with a managed Azure Functions API** when ready. Minimum settings and the prepared workflow are in [deployment.md](docs/deployment.md). Local implementation does not depend on that resource existing. Azure hosting gives the UI and protected AI API; the current workspace data remains browser-local until a separate approved storage adapter is provided.

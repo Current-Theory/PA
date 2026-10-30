@@ -1,5 +1,20 @@
 # Validated delivery
 
+## Assistant-first evolution — 30 October 2026
+
+- Frozen root/API dependency installs passed. Lint, strict typecheck, the production UI/PWA build and the Azure managed API bundle passed.
+- **38 domain/API tests passed**. Coverage includes legacy-data preservation, all required task/project actions, fresh revisions, ambiguity gates, same-turn idempotency, concurrent storage writers, retained completion/deletion context, and recovery after a task commit but before the conversation checkpoint.
+- **24 browser tests passed, 1 skipped** in managed Chromium. The skipped test is direct `file://` navigation blocked by managed URL policy; the exact packaged HTML is separately rendered and exercised over loopback.
+- Browser scenarios cover natural creation with tool results, completion by reference, typed/ordinal clarification and choice buttons, follow-up rescheduling of the same record, project/task survival after clearing chat, interrupted request resume, database-grounded workload answers, explicit dictation, contextual sign-in, backup, manual Trash/restore, existing tasks/history/filtering, accessibility, responsive overflow, CSP and offline PWA.
+- Root and API dependency audits reported zero known vulnerabilities.
+- The native local API started successfully and returned `ready: false` / chat HTTP 503 without a key. No paid model call was attempted. Model/speech/gateway responses in automated tests are controlled fixtures, not proof of a live model, microphone or Azure deployment.
+- No Azure resource, binding, identity, URL or secret was invented or created. Local implementation is complete; actual service/device verification and resource binding remain final setup steps.
+
+The application workspace is now the source of truth. Existing IDs, notes, checklist and outcomes are retained; new projects, revisions, Trash, action receipts and conversation checkpoints are persisted. The external ChatGPT copy/import workflow has been removed from the application. Workspace backups contain records/history, not conversation exports or credentials.
+
+Earlier implementation results are retained below as historical evidence, not descriptions of the current primary workflow.
+
+
 ## Assisted capture and wordmark — 30 October 2026
 
 - Lint, strict typecheck, production build and the Azure managed API bundle passed.

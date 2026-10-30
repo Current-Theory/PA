@@ -1,3 +1,5 @@
+> Historical initial brief. For the current assistant-first product and application-database source-of-truth decision, see management-assistant-brief.md, assistant-evolution-audit.md and the current README.
+
 Build a production-quality web application/PWA tentatively called **EarnLearn Work Hub**.
 
 This is initially a personal productivity application for an EarnLearn Programme Manager. Its purpose is to provide one simple interface for capturing, viewing, managing, completing and later retrieving work tasks that originate from meetings, Outlook email, Microsoft Planner and the user's own quick notes.

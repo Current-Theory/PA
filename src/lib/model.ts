@@ -1,4 +1,4 @@
-export type ProviderId = 'mock' | 'todo' | 'planner';
+export type ProviderId = 'local' | 'mock' | 'todo' | 'planner';
 export type TaskStatus = 'notStarted' | 'inProgress' | 'waiting' | 'completed';
 export type Priority = 'low' | 'normal' | 'high' | 'critical';
 export type SourceType = 'Manual' | 'To Do' | 'Outlook' | 'Planner' | 'Teams';
@@ -28,6 +28,10 @@ export interface Task {
   completionNote: string;
   // A local presentation date, not a Planner beta My Day field.
   focusDate: string | null;
+  projectId?: string | null;
+  revision?: number;
+  updatedAt?: string;
+  deletedAt?: string | null;
 }
 export type TaskPatch = Partial<Omit<Task, 'id' | 'provider' | 'providerTaskId' | 'providerListId' | 'etag' | 'createdAt' | 'sourceType' | 'sourceName' | 'sourceUrl'>>;
 export type TaskField = keyof TaskPatch;
@@ -55,6 +59,14 @@ export interface TaskDraft {
   followUpDate: string | null;
   checklist: string[];
   focusToday: boolean;
+}
+export interface Project {
+  id: string; name: string; notes: string; workstream: string;
+  status: 'active' | 'onHold' | 'completed'; dueDate: string | null;
+  createdAt: string; updatedAt: string; revision: number;
+}
+export interface WorkspaceEvent {
+  id: string; at: string; action: string; taskId?: string; projectId?: string; summary: string;
 }
 export const workstreamDefaults = [
   'Programme Delivery', 'Assessment & Content', 'Regulatory & Quality',

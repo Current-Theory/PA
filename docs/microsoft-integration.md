@@ -1,3 +1,7 @@
+# Historical integration roadmap
+
+The current assistant iteration uses the application workspace as its source of truth, per the updated product brief. Microsoft providers remain disabled. The plans below are retained for a separately approved future integration; they do not describe an active source of truth or live connection.
+
 # Microsoft 365 integration and IT handoff
 
 ## Present boundary

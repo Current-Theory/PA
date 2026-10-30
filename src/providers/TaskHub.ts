@@ -1,4 +1,4 @@
-import type { ProviderId, Task, TaskDraft, TaskPatch, TaskProvider } from '../lib/model';
+import type { ProviderId, ProviderCapabilities, Task, TaskDraft, TaskPatch, TaskProvider } from '../lib/model';
 
 // The UI calls the hub; updates always go back to the task's canonical provider.
 export class TaskHub {
@@ -10,6 +10,9 @@ export class TaskHub {
     const provider = this.providers.get(id);
     if (!provider) throw new Error(`The ${id} provider is not connected.`);
     return provider;
+  }
+  capabilities(id: ProviderId): ProviderCapabilities {
+    return this.providers.get(id)?.capabilities ?? { create: false, writableFields: [], requiresConnection: true };
   }
   async list(): Promise<Task[]> { return (await Promise.all([...this.providers.values()].map(p => p.list()))).flat(); }
   create(title: string, workstream?: string): Promise<Task> { return this.provider(this.captureProvider).create(title, workstream); }

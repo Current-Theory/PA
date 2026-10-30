@@ -14,6 +14,12 @@ const request = (options: { identity?: string | null; action?: string; method?: 
 const response = () => new Response(JSON.stringify({ status: 'completed', output: [{ content: [{ type: 'output_text', text: JSON.stringify(proposal) }] }] }));
 
 describe('managed Azure API authorisation', () => {
+  it('serves the same function-calling contract through the protected hosted chat route', async () => {
+    const handler = hostedAssistant({ key: 'server-key', model: 'configured-model', origin }, async () => new Response(JSON.stringify({ status: 'completed', output: [{ type: 'function_call', call_id: 'today-1', name: 'get_today_tasks', arguments: '{}' }] })));
+    const body = { input: [{ role: 'user', content: 'What should I do today?' }], context: { today: '2026-10-30', timezone: 'Pacific/Auckland', workstream: 'Projects', workstreams: ['Projects'], recentTasks: [], recentProjects: [] } };
+    const result = await handler(request({ action: 'chat', body }));
+    expect(result.status).toBe(200); expect(result.jsonBody).toMatchObject({ calls: [{ name: 'get_today_tasks' }] });
+  });
   it('requires both authenticated and explicitly approved roles', async () => {
     const handler = hostedAssistant({ key: 'server-key', model: 'configured-model', origin }, async () => { throw new Error('must not call OpenAI'); });
     for (const identity of [null, 'invalid', principal('user', ['authenticated']), principal('user', ['work-hub-user'])]) {
