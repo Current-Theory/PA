@@ -1,3 +1,4 @@
+import { attachmentsModel, readAttachmentUpload, createTemporaryAttachments } from '../../server/attachments.ts';
 import type { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { validateCaptureRequest } from '../../src/lib/capture.ts';
 import { AssistantError, generateTaskSuggestions } from '../../server/openai.ts';
@@ -25,16 +26,27 @@ export function hostedAssistant(config: HostedConfig, fetcher: typeof fetch = fe
     const principal = approvedPrincipal(request.headers.get('x-ms-client-principal'));
     if (!principal) return reply(401, { error: 'Sign in with an approved Work Hub account to use the assistant.' });
     const action = request.params.action;
-    if (action === 'status' && request.method === 'GET') return reply(200, { ready: !!config.key && !!config.origin });
-    if (!['capture', 'chat'].includes(action) || request.method !== 'POST') return reply(404, { error: 'Not found.' });
+    if (action === 'status' && request.method === 'GET') return reply(200, { ready: !!config.key && !!config.origin, attachments: !!config.key && !!config.origin && /^gpt-5-mini(?:-\d{4}-\d{2}-\d{2})?$/.test(config.model) });
+    if (!['capture', 'chat', 'attachments'].includes(action) || request.method !== 'POST') return reply(404, { error: 'Not found.' });
     if (!config.origin || request.headers.get('origin') !== config.origin) return reply(403, { error: 'This origin is not approved for assisted capture.' });
     if (!config.key) return reply(503, { error: 'The hosted assistant has no server-side API key configured.' });
-    if (!request.headers.get('content-type')?.startsWith('application/json')) return reply(415, { error: 'Send a JSON work note.' });
+    if (action !== 'attachments' && !request.headers.get('content-type')?.startsWith('application/json')) return reply(415, { error: 'Send a JSON work note.' });
     const now = Date.now();
     for (const [user, rate] of rates) if (now - rate.start > 60000) rates.delete(user);
     const rate = rates.get(principal.userId) ?? { start: now, count: 0 };
     if (rate.count >= (action === 'chat' ? 60 : 12) || active >= 2) return reply(429, { error: 'The assistant is busy. Wait a moment and try again.' });
     rate.count++; rates.set(principal.userId, rate);
+    if (action === 'attachments') {
+      active++;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      try {
+        attachmentsModel(config.model);
+        const files = await readAttachmentUpload(request.body, request.headers.get('content-type') ?? '', request.headers.get('content-length'), controller.signal);
+        return reply(200, { attachments: await createTemporaryAttachments(files, config.key, config.model, principal.userId, controller.signal, fetcher) });
+      } catch (error) { return reply(error instanceof AssistantError ? error.status : 400, { error: error instanceof AssistantError ? error.message : 'Upload failed. Your message is unchanged; try again.' }); }
+      finally { clearTimeout(timer); active--; }
+    }
     let input;
     try {
       const text = await request.text();
@@ -44,7 +56,7 @@ export function hostedAssistant(config: HostedConfig, fetcher: typeof fetch = fe
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 35000);
     active++;
-    try { return reply(200, 'context' in input ? await managementReply(input, { key: config.key, model: config.model }, controller.signal, fetcher) : await generateTaskSuggestions(input, { key: config.key, model: config.model }, controller.signal, fetcher)); }
+    try { return reply(200, 'context' in input ? await managementReply(input, { key: config.key, model: config.model, userId: principal.userId }, controller.signal, fetcher) : await generateTaskSuggestions(input, { key: config.key, model: config.model }, controller.signal, fetcher)); }
     catch (error) { return reply(error instanceof AssistantError ? error.status : 502, { error: error instanceof AssistantError ? error.message : 'The assistant could not produce valid suggestions. Your note is still here; retry when ready.' }); }
     finally { active--; clearTimeout(timer); }
   };

@@ -37,7 +37,7 @@ describe('managed Azure API authorisation', () => {
   });
   it('fails closed when server configuration or capture context is incomplete', async () => {
     const missing = hostedAssistant({ model: 'configured-model', origin });
-    expect((await missing(request({ action: 'status', method: 'GET' }))).jsonBody).toEqual({ ready: false });
+    expect((await missing(request({ action: 'status', method: 'GET' }))).jsonBody).toEqual({ ready: false, attachments: false });
     expect((await missing(request())).status).toBe(503);
     const configured = hostedAssistant({ key: 'server-key', model: 'configured-model', origin });
     expect((await configured(request({ body: { ...input, today: '2026-02-30' } }))).status).toBe(400);

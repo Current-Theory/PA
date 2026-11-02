@@ -5,7 +5,7 @@ export class AssistantError extends Error {
   readonly status: number;
   constructor(message: string, status = 502, readonly openai?: SafeOpenAIResult) { super(message); this.status = status; }
 }
-export interface OpenAIConfig { key: string; model: string }
+export interface OpenAIConfig { key: string; model: string; userId?: string }
 
 export async function generateTaskSuggestions(input: CaptureRequest, config: OpenAIConfig, signal: AbortSignal, fetcher: typeof fetch = fetch) {
   const result = await fetcher('https://api.openai.com/v1/responses', {

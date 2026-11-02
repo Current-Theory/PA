@@ -31,7 +31,7 @@ describe('every managed API action', () => {
     const fetcher = vi.fn();
     const text = vi.fn();
     const handler = hostedAssistant({ key: 'server-only-test-key', model: 'test', origin: 'https://example.test' }, fetcher);
-    for (const action of ['status', 'capture', 'chat', 'unknown']) {
+    for (const action of ['status', 'capture', 'chat', 'attachments', 'unknown']) {
       for (const principal of rejected) {
         const request = {
           method: action === 'status' ? 'GET' : 'POST', params: { action }, text,
