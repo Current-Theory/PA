@@ -1,8 +1,9 @@
+import { safeOpenAIResult, type SafeOpenAIResult } from './openai-diagnostics.ts';
 import { captureInstructions, captureSchema, parseTaskSuggestions, type CaptureRequest } from '../src/lib/capture.ts';
 
 export class AssistantError extends Error {
   readonly status: number;
-  constructor(message: string, status = 502) { super(message); this.status = status; }
+  constructor(message: string, status = 502, readonly openai?: SafeOpenAIResult) { super(message); this.status = status; }
 }
 export interface OpenAIConfig { key: string; model: string }
 
@@ -19,7 +20,7 @@ export async function generateTaskSuggestions(input: CaptureRequest, config: Ope
     const message = result.status === 429 ? 'The OpenAI API is rate limited or has no available quota. Check the server’s billing and try again later.'
       : result.status === 401 || result.status === 403 ? 'The server’s OpenAI API access was rejected. Check its key and permissions.'
       : 'The OpenAI service could not complete the request. Your note is still here.';
-    throw new AssistantError(message, result.status === 429 ? 429 : 502);
+    throw new AssistantError(message, result.status === 429 ? 429 : 502, await safeOpenAIResult(result, config.key));
   }
   const raw = await result.text();
   if (raw.length > 300000) throw new Error('oversized response');

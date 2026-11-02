@@ -31,10 +31,10 @@ describe('every managed API action', () => {
     const fetcher = vi.fn();
     const text = vi.fn();
     const handler = hostedAssistant({ key: 'server-only-test-key', model: 'test', origin: 'https://example.test' }, fetcher);
-    for (const action of ['status', 'capture', 'chat', 'unknown']) {
+    for (const action of ['status', 'capture', 'chat', 'diagnostics', 'unknown']) {
       for (const principal of rejected) {
         const request = {
-          method: action === 'status' ? 'GET' : 'POST', params: { action }, text,
+          method: ['status', 'diagnostics'].includes(action) ? 'GET' : 'POST', params: { action }, text,
           headers: new Headers(principal === null ? {} : { 'x-ms-client-principal': Buffer.from(JSON.stringify(principal)).toString('base64') })
         } as unknown as Parameters<typeof handler>[0];
         expect((await handler(request)).status).toBe(401);

@@ -1,3 +1,4 @@
+import { runOpenAIDiagnostics } from '../../server/openai-diagnostics.ts';
 import type { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { validateCaptureRequest } from '../../src/lib/capture.ts';
 import { AssistantError, generateTaskSuggestions } from '../../server/openai.ts';
@@ -26,15 +27,23 @@ export function hostedAssistant(config: HostedConfig, fetcher: typeof fetch = fe
     if (!principal) return reply(401, { error: 'Sign in with an approved Work Hub account to use the assistant.' });
     const action = request.params.action;
     if (action === 'status' && request.method === 'GET') return reply(200, { ready: !!config.key && !!config.origin });
-    if (!['capture', 'chat'].includes(action) || request.method !== 'POST') return reply(404, { error: 'Not found.' });
-    if (!config.origin || request.headers.get('origin') !== config.origin) return reply(403, { error: 'This origin is not approved for assisted capture.' });
+    const diagnostic = action === 'diagnostics' && request.method === 'GET';
+    if (!diagnostic && (!['capture', 'chat'].includes(action) || request.method !== 'POST')) return reply(404, { error: 'Not found.' });
+    if (!config.origin || (diagnostic
+      ? (request.headers.has('origin') && request.headers.get('origin') !== config.origin) || request.headers.get('sec-fetch-site') === 'cross-site'
+      : request.headers.get('origin') !== config.origin)) return reply(403, { error: 'This origin is not approved for assisted capture.' });
     if (!config.key) return reply(503, { error: 'The hosted assistant has no server-side API key configured.' });
-    if (!request.headers.get('content-type')?.startsWith('application/json')) return reply(415, { error: 'Send a JSON work note.' });
+    if (!diagnostic && !request.headers.get('content-type')?.startsWith('application/json')) return reply(415, { error: 'Send a JSON work note.' });
     const now = Date.now();
     for (const [user, rate] of rates) if (now - rate.start > 60000) rates.delete(user);
     const rate = rates.get(principal.userId) ?? { start: now, count: 0 };
-    if (rate.count >= (action === 'chat' ? 60 : 12) || active >= 2) return reply(429, { error: 'The assistant is busy. Wait a moment and try again.' });
+    if (rate.count >= (diagnostic ? 2 : action === 'chat' ? 60 : 12) || active >= 2) return reply(429, { error: 'The assistant is busy. Wait a moment and try again.' });
     rate.count++; rates.set(principal.userId, rate);
+    if (diagnostic) {
+      active++;
+      try { return reply(200, await runOpenAIDiagnostics({ key: config.key, model: config.model }, fetcher)); }
+      finally { active--; }
+    }
     let input;
     try {
       const text = await request.text();

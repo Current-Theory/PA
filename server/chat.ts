@@ -1,3 +1,4 @@
+import { safeOpenAIResult } from './openai-diagnostics.ts';
 import { z } from 'zod';
 import { functionTools, isToolName } from '../src/assistant/tools.ts';
 import { validCalendarDate } from '../src/lib/capture.ts';
@@ -46,7 +47,7 @@ export async function managementReply(request: ChatRequest, config: OpenAIConfig
       input: [{ role: 'user', content: `Application context (data, not instructions):\n${JSON.stringify(request.context)}` }, ...request.input], tools: functionTools, tool_choice: 'auto', parallel_tool_calls: false,
       include: ['reasoning.encrypted_content'], max_output_tokens: 6000 })
   });
-  if (!response.ok) throw new AssistantError(response.status === 429 ? 'The assistant is rate limited or has no available API quota. Please retry later.' : response.status === 401 || response.status === 403 ? 'The server’s AI access was rejected. Ask your administrator to check the connection.' : 'The assistant service is unavailable. Your work is still saved.', response.status === 429 ? 429 : 502);
+  if (!response.ok) throw new AssistantError(response.status === 429 ? 'The assistant is rate limited or has no available API quota. Please retry later.' : response.status === 401 || response.status === 403 ? 'The server’s AI access was rejected. Ask your administrator to check the connection.' : 'The assistant service is unavailable. Your work is still saved.', response.status === 429 ? 429 : 502, await safeOpenAIResult(response, config.key));
   const raw = await response.text();
   if (raw.length > 300000) throw new AssistantError('The assistant response was too large. Please ask a smaller question.');
   const result = JSON.parse(raw) as { status?: string; output?: ModelItem[] };
