@@ -552,3 +552,55 @@ h1 { font-size: 28px; letter-spacing: -.7px; }
   .conversation-toolbar .text-button { font-size: 12px; }
   .settings-body { padding: 20px; }
 }
+
+/* Final interaction pass: one purpose per control and consistent work views. */
+.sidebar nav[aria-label='Main'] { margin-top: 28px; }
+.sidebar nav[aria-label='Main'] .nav-item:nth-child(7) { margin-top: 18px; border-top: 1px solid #ffffff1a; border-radius: 0; padding-top: 12px; min-height: 54px; }
+.quick-capture { flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+.capture-destination { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #53646a; }
+.capture-destination select { border: 0; background: transparent; padding: 4px; font-size: 12px; max-width: 210px; }
+.filters { background: transparent; border: 0; border-radius: 0; padding: 0 0 16px; margin: 0 0 10px; border-bottom: 1px solid var(--border); }
+.filters .search-field { max-width: 480px; }
+.filter-controls { gap: 8px; margin-top: 10px; }
+.filter-controls select, .filter-controls input { min-height: 34px; font-size: 12px; }
+.result-heading { margin-bottom: 12px; color: #53646a; font-size: 12px; }
+.task-row { cursor: pointer; }
+.task-row:hover, .task-row:focus-within { background: #f1f6f7; }
+.task-main { align-self: stretch; justify-content: center; }
+.task-date { min-width: 70px; }
+.follow-up-date { font-weight: 600; color: #87592b; }
+.waiting-group { margin: 24px 0; }
+.waiting-group h2 { font-size: 15px; font-weight: 500; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.waiting-group h2 > span:not(.section-count) { font-weight: 600; }
+.project-toolbar { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+.project-create { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(140px, 1fr); gap: 14px; padding: 18px 0 24px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+.project-create label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; min-width: 0; }
+.project-create input, .project-create select, .project-create textarea { width: 100%; }
+.project-create-notes, .project-create-actions { grid-column: 1 / -1; }
+.project-create-actions { display: flex; gap: 10px; }
+.project-card .project-meta { color: #53646a; }
+.management-assistant { min-height: 400px; height: calc(100dvh - 210px); max-height: none; }
+.conversation-log { min-height: 80px; }
+.conversation-composer { flex: 0 0 auto; margin-top: auto; padding: 9px; }
+.conversation-composer textarea { min-height: 34px; max-height: 180px; resize: none; overflow-y: auto; padding: 5px 4px; }
+.composer-actions .button { border: 0; box-shadow: none; background: transparent; padding: 4px 6px; }
+.composer-actions > span { font-size: 10px; }
+.conversation-privacy { margin: 8px 22px; }
+.conversation-panel .management-assistant { height: auto; min-height: 0; }
+@media (min-width: 1201px) and (min-height: 650px) {
+  .daily-notebook { position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto; }
+}
+@media (max-width: 760px) {
+  .capture-destination { margin-left: 29px; order: 3; flex-basis: 100%; }
+  .capture-destination select { flex: 1; max-width: calc(100% - 55px); }
+  .quick-capture input { flex-basis: calc(100% - 90px); }
+  .project-create { grid-template-columns: 1fr; }
+  .management-assistant { min-height: 360px; height: calc(100dvh - 180px); }
+  .conversation-panel .management-assistant { height: auto; min-height: 0; }
+  .filter-controls select { flex: 1 1 130px; max-width: 100%; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .task-row .row-open, .task-row .focus-button:not(.selected) { opacity: 0; }
+  .task-row:hover .row-open, .task-row:focus-within .row-open,
+  .task-row:hover .focus-button, .task-row:focus-within .focus-button { opacity: 1; }
+}

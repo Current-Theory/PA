@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUp, Mic, Square, MessageSquare, RefreshCw, CircleCheck, AlertCircle, ArrowUpRight, RotateCcw, MessageSquarePlus, X } from 'lucide-react';
 import { useDictation } from '../lib/useDictation';
 import { useDialog } from '../lib/useDialog';
@@ -19,6 +19,7 @@ export function AssistantConversation({ conversation, engine, workspace, workstr
   const [attempt, setAttempt] = useState(0);
   const running = useRef(false);
   const draftRef = useRef(draft); draftRef.current = draft;
+  const messageRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const speech = useDictation(text => { if (text) { draftRef.current = `${draftRef.current}${draftRef.current ? ' ' : ''}${text}`.slice(0, 12000); setDraft(draftRef.current); } });
   const submitting = useRef(false);
@@ -34,6 +35,13 @@ export function AssistantConversation({ conversation, engine, workspace, workstr
     return () => controller.abort();
   }, [attempt]);
   useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [conversation.messages.length, conversation.pending?.results.length]);
+  useLayoutEffect(() => {
+    const input = messageRef.current;
+    const resize = () => { if (input) { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 180)}px`; } };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, [draft]);
   const perform = async (operation: () => Promise<void>) => {
     if (running.current) return;
     running.current = true; setBusy(true); setError(''); speech.stop();
@@ -74,7 +82,7 @@ export function AssistantConversation({ conversation, engine, workspace, workstr
     </div>
     {conversation.pending && <div className="conversation-recovery">{busy ? <button className="button secondary" onClick={() => engine.cancel()}><Square size={14} />Stop request</button> : <><button className="button primary" disabled={connection !== 'ready'} onClick={() => void perform(async () => { await engine.resume(workstream, changed); setDraft(''); })}><RotateCcw size={14} />Resume request</button><button className="button secondary" onClick={() => void perform(() => engine.stop(changed))}>Stop request</button></>}</div>}
     <form className="conversation-composer" onSubmit={event => { event.preventDefault(); void send(); }}>
-      <label className="sr-only" htmlFor="assistant-message">Message</label><textarea id="assistant-message" data-autofocus value={draft} maxLength={12000} rows={3} disabled={busy || finalising || !!conversation.pending} placeholder="Write a message…" onChange={event => { draftRef.current = event.target.value; setDraft(event.target.value); }} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (connection === 'ready') void send(); } }} />
+      <label className="sr-only" htmlFor="assistant-message">Message</label><textarea ref={messageRef} id="assistant-message" data-autofocus value={draft} maxLength={12000} rows={1} disabled={busy || finalising || !!conversation.pending} placeholder="Write a message…" onChange={event => { draftRef.current = event.target.value; setDraft(event.target.value); }} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (connection === 'ready') void send(); } }} />
       <div className="composer-actions"><button type="button" className={`button secondary ${speech.listening ? 'is-listening' : ''}`} aria-pressed={speech.listening} disabled={!speech.supported || busy || finalising || !!conversation.pending} onClick={speech.listening ? speech.stop : speech.start}>{speech.listening ? <Square size={14} /> : <Mic size={15} />}{speech.listening ? 'Stop dictation' : 'Start dictation'}</button><span>{finalising ? 'Finishing…' : speech.listening ? 'Listening…' : 'Enter to send · Shift+Enter for a new line'}</span><button className="send-message" type="submit" aria-label="Send message" disabled={(!draft.trim() && !speech.listening) || connection !== 'ready' || busy || finalising || !!conversation.pending}><ArrowUp size={19} /></button></div>
     </form>
     {speech.interim && <p className="speech-interim" role="status">{speech.interim}</p>}{speech.error && speech.error !== error && <p className="inline-error" role="alert">{speech.error}</p>}
@@ -84,5 +92,5 @@ export function AssistantConversation({ conversation, engine, workspace, workstr
 
 export function AssistantPanel({ close, ...props }: Parameters<typeof AssistantConversation>[0] & { close: () => void }) {
   const ref = useRef<HTMLElement>(null); useDialog(ref, close);
-  return <div className="drawer-layer"><div className="drawer-backdrop" onClick={close} aria-hidden="true" /><aside className="capture-assistant conversation-panel" role="dialog" aria-modal="true" aria-label="Conversation" ref={ref} tabIndex={-1}><header className="assistant-header"><MessageSquare size={20} /><div><h2>Conversation</h2></div><button className="icon-button" aria-label="Close conversation" onClick={close}><X size={20} /></button></header><AssistantConversation {...props} /></aside></div>;
+  return <div className="drawer-layer"><div className="drawer-backdrop" onClick={close} aria-hidden="true" /><aside className="capture-assistant conversation-panel" role="dialog" aria-modal="true" aria-label="Conversation" ref={ref} tabIndex={-1}><header className="assistant-header"><MessageSquare size={20} /><div><h2>Conversation</h2><small className="conversation-context">{props.workstream}</small></div><button className="icon-button" aria-label="Close conversation" onClick={close}><X size={20} /></button></header><AssistantConversation {...props} /></aside></div>;
 }

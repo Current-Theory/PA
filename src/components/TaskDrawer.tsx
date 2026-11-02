@@ -47,7 +47,7 @@ export function TaskDrawer({ task, projects, workstreams, today, fields, save, r
         <div className="drawer-source"><SourceBadge source={task.sourceType} /><span>{task.status === 'completed' ? 'Completed task' : ''}</span></div>
         <label className="sr-only" htmlFor="task-title">Task title</label>
         <textarea id="task-title" data-autofocus className="editable-title" rows={3} maxLength={500} value={draft.title} onChange={e => update('title', e.target.value)} disabled={!can('title')} />
-        <button className={`focus-toggle ${draft.focusDate === today ? 'active' : ''}`} disabled={!can('focusDate')} onClick={() => update('focusDate', draft.focusDate === today ? null : today)}><Pin size={15} />{draft.focusDate === today ? 'In Focus Today' : 'Add to Focus Today'}</button>
+        <button className={`focus-toggle ${draft.focusDate === today ? 'active' : ''}`} disabled={!can('focusDate')} onClick={() => update('focusDate', draft.focusDate === today ? null : today)}><Pin size={15} />{draft.focusDate === today ? "In Today's focus" : "Add to Today's focus"}</button>
         <div className="detail-fields">
           <label>Status<select aria-label="Status" value={draft.status} disabled={!can('status')} onChange={e => update('status', e.target.value as Task['status'])}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>Priority<select aria-label="Priority" value={draft.priority} disabled={!can('priority')} onChange={e => update('priority', e.target.value as Task['priority'])}>{Object.entries(priorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

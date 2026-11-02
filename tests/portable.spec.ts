@@ -7,7 +7,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { createServer } from 'node:http';
 
 async function exerciseTaskHistory(page: Page, reload: () => Promise<void>) {
-  await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Today's focus" })).toBeVisible();
   await page.getByRole('textbox', { name: 'Quick capture task' }).fill('Try my downloadable app');
   await page.getByRole('textbox', { name: 'Quick capture task' }).press('Enter');
   await page.getByRole('button', { name: 'Open Try my downloadable app', exact: true }).click();
@@ -63,7 +63,7 @@ test('the exact packaged HTML needs no subresources and retains context through 
     page.on('request', request => { if (!request.isNavigationRequest() && !request.url().startsWith('data:')) subresources.push(request.url()); });
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(origin + '/#today');
-    await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: "Today's focus" })).toBeVisible();
     await context.setOffline(true);
     await exerciseTaskHistory(page, async () => {
       // Reloading the HTTP harness needs loopback access; all editing is offline.

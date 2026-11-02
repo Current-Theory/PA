@@ -8,14 +8,14 @@ async function connection(page: Page) {
 
 test('Today is the default, notes keep dates, survive reload, appear in search and backups', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Today's focus" })).toBeVisible();
   const notebook = page.getByRole('region', { name: 'Daily Note', exact: true });
   const date = await page.getByLabel('Note date', { exact: true }).inputValue();
   await page.getByLabel('Daily Note text', { exact: true }).fill('Meeting with Prakash\nWaiting for the revised assessment plan.');
-  await expect(notebook.getByRole('status')).toHaveText('Saved on this device');
+  await expect(notebook.getByRole('status')).toHaveText('Saved');
   await page.getByRole('button', { name: 'Previous day’s note', exact: true }).click();
   await page.getByLabel('Daily Note text', { exact: true }).fill('Yesterday: checked the proposal.');
-  await expect(notebook.getByRole('status')).toHaveText('Saved on this device');
+  await expect(notebook.getByRole('status')).toHaveText('Saved');
   await page.getByRole('button', { name: 'Today', exact: true }).click();
   await expect(page.getByLabel('Daily Note text', { exact: true })).toContainText('Meeting with Prakash');
   await page.reload();
@@ -131,12 +131,12 @@ test('an unsaved note survives navigation and can be retried after storage recov
   });
   await page.getByLabel('Daily Note text', { exact: true }).fill('Keep this unsaved note.');
   await expect(page.getByRole('alert')).toContainText('Storage full');
-  await page.getByRole('link', { name: /^All Tasks/ }).click();
+  await page.getByRole('link', { name: /^Tasks/ }).click();
   await page.getByRole('link', { name: /^Today/ }).click();
   await expect(page.getByLabel('Daily Note text', { exact: true })).toHaveValue('Keep this unsaved note.');
   await page.evaluate(() => (window as unknown as Window & { restoreNoteStorage: () => void }).restoreNoteStorage());
   await page.getByRole('button', { name: 'Retry save', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Daily Note', exact: true }).getByRole('status')).toHaveText('Saved on this device');
+  await expect(page.getByRole('region', { name: 'Daily Note', exact: true }).getByRole('status')).toHaveText('Saved');
   await page.reload();
   await expect(page.getByLabel('Daily Note text', { exact: true })).toHaveValue('Keep this unsaved note.');
 });

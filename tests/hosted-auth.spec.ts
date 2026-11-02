@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('invited Microsoft user can open the workspace', async ({ page }) => {
   await page.route('**/.auth/me', route => route.fulfill({ json: { clientPrincipal: { userId: 'approved', identityProvider: 'aad', userRoles: ['authenticated', 'workhub_user'] } } }));
   await page.goto('/#today');
-  await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Today's focus" })).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Sign out of Work Hub' })).toHaveAttribute('href', '/.auth/logout?post_logout_redirect_uri=/access-denied');
 });

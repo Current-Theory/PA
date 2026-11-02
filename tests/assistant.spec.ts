@@ -32,7 +32,7 @@ test('natural creation executes tools directly and a follow-up reschedules the s
   await expect(page.getByRole('log')).toContainText('Added the Moodle review for next Monday');
   await send(page, 'Move that Moodle review to the following Monday.');
   await expect(page.getByRole('log')).toContainText('Moved that Moodle review');
-  await page.getByRole('link', { name: /^All Tasks/ }).click(); await page.getByLabel('Search tasks', { exact: true }).fill('Moodle capstone');
+  await page.getByRole('link', { name: /^Tasks/ }).click(); await page.getByLabel('Search tasks', { exact: true }).fill('Moodle capstone');
   await expect(page.getByRole('button', { name: 'Open Review Moodle capstone questions', exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Open Review Moodle capstone questions', exact: true }).click();
   await expect(page.getByLabel('Priority', { exact: true })).toHaveValue('low');
@@ -93,7 +93,7 @@ test('a failed final AI response can be resumed after reload without duplicate d
   });
   await page.goto('/#assistant'); await send(page, 'Add a task to recover once.'); await expect(page.getByRole('alert')).toContainText('interrupted'); await expect(page.getByRole('log')).toContainText('Added “Recover this task once”');
   await page.reload(); await page.getByRole('button', { name: 'Resume request', exact: true }).click(); await expect(page.getByRole('log')).toContainText('saved once');
-  await page.getByRole('link', { name: /^All Tasks/ }).click(); await page.getByLabel('Search tasks', { exact: true }).fill('Recover this task once'); await expect(page.getByRole('button', { name: 'Open Recover this task once', exact: true })).toHaveCount(1);
+  await page.getByRole('link', { name: /^Tasks/ }).click(); await page.getByLabel('Search tasks', { exact: true }).fill('Recover this task once'); await expect(page.getByRole('button', { name: 'Open Recover this task once', exact: true })).toHaveCount(1);
 });
 
 test('workload answers read the actual database and the mobile assistant is accessible', async ({ page }) => {

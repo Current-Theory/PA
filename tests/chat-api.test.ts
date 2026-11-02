@@ -9,6 +9,9 @@ describe('Responses function calling transport', () => {
       expect(String(url)).toBe('https://api.openai.com/v1/responses');
       const body = JSON.parse(init?.body as string);
       expect(body).toMatchObject({ store: false, parallel_tool_calls: false, tools: expect.arrayContaining([expect.objectContaining({ name: 'get_today_tasks', strict: true, type: 'function' })]) });
+      expect(body.instructions).toContain("reply only 'Working.' without tools");
+      expect(body.instructions).toContain('Do not announce readiness');
+      expect(body.instructions).toContain('Projects are finite outcomes within a workstream');
       expect(body.include).toEqual(['reasoning.encrypted_content']);
       expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer server-only-key');
       return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'function_call', call_id: 'today-1', name: 'get_today_tasks', arguments: '{}' }] }));

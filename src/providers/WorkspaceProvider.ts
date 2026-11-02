@@ -1,7 +1,7 @@
 import { validCalendarDate } from '../lib/capture';
 import { dateKey } from '../lib/dates';
 import type { Conversation } from '../assistant/contracts';
-import type { Task } from '../lib/model';
+import type { Task, Project } from '../lib/model';
 import type { WorkspaceSnapshot, WorkspaceStorage } from './storage';
 import { DemoStorage } from './storage';
 import { MockTaskProvider } from './MockTaskProvider';
@@ -35,6 +35,22 @@ export class WorkspaceProvider extends MockTaskProvider {
       const result = fn(state);
       state.receipts[key] = { fingerprint, result: structuredClone(result) };
       return result;
+    });
+  }
+  async createProject(input: Pick<Project, 'name' | 'workstream' | 'notes' | 'dueDate'>): Promise<Project> {
+    const name = input.name.trim();
+    if (!name || name.length > 150) throw new Error('Use a project name between 1 and 150 characters.');
+    if (input.notes.length > 30000 || (input.dueDate !== null && !validCalendarDate(input.dueDate))) throw new Error('Check the project notes and target date.');
+    return this.mutate(state => {
+      if (!state.workstreams.includes(input.workstream)) throw new Error('Choose an existing workstream.');
+      state.projects ??= [];
+      if (state.projects.some(project => project.name.toLocaleLowerCase() === name.toLocaleLowerCase())) throw new Error('A project with that name already exists.');
+      const now = new Date().toISOString();
+      const project: Project = { ...input, name, id: crypto.randomUUID(), status: 'active', createdAt: now, updatedAt: now, revision: 1 };
+      state.projects.push(project);
+      state.events ??= [];
+      state.events.push({ id: crypto.randomUUID(), at: now, action: 'manual_create_project', projectId: project.id, summary: `Created project “${name}”.` });
+      return project;
     });
   }
   async restoreTask(id: string): Promise<void> {

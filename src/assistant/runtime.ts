@@ -1,3 +1,4 @@
+import { todayTasks } from '../lib/today';
 import { tools, isToolName } from './tools';
 import type { ActionResult, FunctionCall, PendingTurn } from './contracts';
 import { WorkspaceProvider } from '../providers/WorkspaceProvider';
@@ -46,10 +47,7 @@ export class ActionRuntime {
         this.seeTasks([task]); return ok(`Found “${task.title}”.`, taskView(task, true), task.id);
       }
       if (name === 'get_today_tasks') {
-        const focus = active.filter(task => task.focusDate === this.today);
-        const due = active.filter(task => task.dueDate === this.today);
-        const overdue = active.filter(task => task.dueDate && task.dueDate < this.today);
-        const followUp = active.filter(task => task.status === 'waiting' && task.followUpDate && task.followUpDate <= this.today);
+        const { focus, due, overdue, followUp } = todayTasks(active, this.today);
         this.seeTasks([...focus, ...due, ...overdue, ...followUp]);
         return ok('Read today’s work from the database.', { today: this.today, focus: focus.map(task => taskView(task)), due: due.map(task => taskView(task)), overdue: overdue.map(task => taskView(task)), followUp: followUp.map(task => taskView(task)), activeCount: active.length });
       }

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/#today');
-  await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Today's focus" })).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: 'Loading workspace' })).toHaveCount(0);
 });
 
@@ -44,9 +44,10 @@ test('waiting and follow-up, filtering and configurable workstreams', async ({ p
   await dialog.getByLabel('Waiting on', { exact: true }).fill('Content review team');
   await dialog.getByLabel('Follow-up date', { exact: true }).fill('2020-01-01');
   await dialog.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByText('Content review team · Follow up today')).toBeVisible();
-  await page.getByRole('link', { name: /^Waiting/ }).click();
   await expect(page.getByText('Content review team', { exact: true })).toBeVisible();
+  await expect(page.locator('.task-row').filter({ hasText: 'Content review team' }).locator('.task-date')).toContainText('Overdue follow-up');
+  await page.getByRole('link', { name: /^Waiting/ }).click();
+  await expect(page.getByRole('heading', { name: /Waiting on Content review team/ })).toBeVisible();
   await page.getByRole('link', { name: 'Workstreams', exact: true }).click();
   await page.getByLabel('New workstream name', { exact: true }).fill('Pilot delivery');
   await page.getByRole('button', { name: 'Add workstream', exact: true }).click();
@@ -99,8 +100,8 @@ test('mobile navigation and drawer fit without horizontal overflow', async ({ pa
   await page.screenshot({ path: 'test-results/today-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Open navigation', exact: true }).click();
-  await page.getByRole('link', { name: /^All Tasks/ }).click();
-  await expect(page.getByRole('heading', { name: 'All Tasks', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: /^Tasks/ }).click();
+  await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Open Review Year 3 assessment wording', exact: true }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => ({ target: n.target, message: n.failureSummary })) }))).toEqual([]);
@@ -109,14 +110,14 @@ test('mobile navigation and drawer fit without horizontal overflow', async ({ pa
 test('production PWA removes old shells and keeps protected pages out of caches', async ({ page }) => {
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Today's focus" })).toBeVisible();
   expect(await page.evaluate(async () => (await caches.keys()).filter(key => key.startsWith('earnlearn-shell-')))).toEqual([]);
   const worker = await page.request.get('/sw.js');
   expect(await worker.text()).not.toContain("addEventListener('fetch'");
 });
 
 test('filters combine source, priority and history dates without losing context', async ({ page }) => {
-  await page.getByRole('link', { name: /^All Tasks/ }).click();
+  await page.getByRole('link', { name: /^Tasks/ }).click();
   await page.getByLabel('Filter source', { exact: true }).selectOption('Outlook');
   await page.getByLabel('Filter priority', { exact: true }).selectOption('high');
   await expect(page.locator('.task-list').getByRole('button', { name: /^Open / })).toHaveCount(1);
@@ -186,7 +187,7 @@ test('production assets work under the Azure content security policy', async ({ 
       } else await route.continue();
     });
     await page.goto('http://127.0.0.1:4173/#today');
-    await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: "Today's focus" })).toBeVisible();
     const capture = page.getByRole('textbox', { name: 'Quick capture task' });
     await capture.fill('Security policy smoke test'); await capture.press('Enter');
     await expect(page.getByRole('button', { name: 'Open Security policy smoke test', exact: true })).toBeVisible();
