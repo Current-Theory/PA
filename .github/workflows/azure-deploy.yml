@@ -1,12 +1,14 @@
-# Template: place under .github/workflows only after creating the approved Azure
-# Static Web App and supplying its deployment token as this Actions secret.
+# Deploy main only, using the existing approved Azure Static Web App token.
 name: Deploy Work Hub to approved Azure environment
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
