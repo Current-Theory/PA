@@ -4,16 +4,16 @@ import { AssistantError, generateTaskSuggestions } from '../../server/openai.ts'
 import { managementReply, validateChatRequest } from '../../server/chat.ts';
 
 interface HostedConfig { key?: string; model: string; origin?: string }
-interface Principal { userId: string; userRoles: string[] }
+interface Principal { userId: string; identityProvider: 'aad'; userRoles: string[] }
 
 // Trust this header ONLY behind the Azure Static Web Apps managed API gateway,
 // which validates authentication and strips user-supplied reserved headers.
 export function approvedPrincipal(header: string | null): Principal | null {
   try {
-    if (!header || header.length > 16000) return null;
+    if (!header || header.length > 16000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(header)) return null;
     const value = JSON.parse(Buffer.from(header, 'base64').toString('utf8'));
-    if (typeof value.userId !== 'string' || !value.userId || !Array.isArray(value.userRoles) || !value.userRoles.includes('authenticated') || !value.userRoles.includes('work-hub-user')) return null;
-    return { userId: value.userId, userRoles: value.userRoles };
+    if (!value || typeof value !== 'object' || value.identityProvider !== 'aad' || typeof value.userId !== 'string' || !value.userId.trim() || !Array.isArray(value.userRoles) || !value.userRoles.every((role: unknown) => typeof role === 'string') || !value.userRoles.includes('authenticated') || !value.userRoles.includes('workhub_user')) return null;
+    return { userId: value.userId, identityProvider: 'aad', userRoles: value.userRoles };
   } catch { return null; }
 }
 

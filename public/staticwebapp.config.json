@@ -1,20 +1,134 @@
 {
-  "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/*.{png,svg,ico,js,css,json,webmanifest}"]
-  },
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com https://*.cloud.microsoft",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(self), geolocation=()"
+    "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
+    "Cache-Control": "no-store"
   },
   "routes": [
-    { "route": "/api/assistant/*", "allowedRoles": ["work-hub-user"] },
-    { "route": "/index.html", "headers": { "Cache-Control": "no-cache" } },
-    { "route": "/sw.js", "headers": { "Cache-Control": "no-cache" } },
-    { "route": "/manifest.webmanifest", "headers": { "Cache-Control": "no-cache" } }
+    {
+      "route": "/.auth/login/github",
+      "statusCode": 404
+    },
+    {
+      "route": "/.auth/*",
+      "allowedRoles": [
+        "anonymous"
+      ]
+    },
+    {
+      "route": "/access-denied",
+      "rewrite": "/access-denied.html",
+      "allowedRoles": [
+        "anonymous"
+      ]
+    },
+    {
+      "route": "/access-denied.html",
+      "allowedRoles": [
+        "anonymous"
+      ]
+    },
+    {
+      "route": "/assistant-connected.html",
+      "allowedRoles": [
+        "anonymous"
+      ]
+    },
+    {
+      "route": "/assistant-connected.css",
+      "allowedRoles": [
+        "anonymous"
+      ]
+    },
+    {
+      "route": "/sw.js",
+      "allowedRoles": [
+        "anonymous"
+      ]
+    },
+    {
+      "route": "/api",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/assets/*",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/index.html",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/icon.svg",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/manifest.webmanifest",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/pwa-192.png",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/pwa-512.png",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/pwa-maskable.png",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/apple-touch-icon.png",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    },
+    {
+      "route": "/*",
+      "rewrite": "/index.html",
+      "allowedRoles": [
+        "workhub_user"
+      ]
+    }
   ],
-  "mimeTypes": { ".webmanifest": "application/manifest+json" },
-  "platform": { "apiRuntime": "node:22" }
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
+  },
+  "platform": {
+    "apiRuntime": "node:22"
+  },
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/",
+      "statusCode": 302
+    },
+    "403": {
+      "rewrite": "/access-denied.html"
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './hosted-fixture';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 
@@ -106,18 +106,13 @@ test('mobile navigation and drawer fit without horizontal overflow', async ({ pa
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => ({ target: n.target, message: n.failureSummary })) }))).toEqual([]);
 });
 
-test('production PWA precaches the shell and keeps the demo available offline', async ({ page, context }) => {
+test('production PWA removes old shells and keeps protected pages out of caches', async ({ page }) => {
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
-  await context.setOffline(true);
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
-  await expect(page.getByRole('status').filter({ hasText: 'You’re offline.' })).toBeVisible();
-  const capture = page.getByRole('textbox', { name: 'Quick capture task' });
-  await capture.fill('Offline demo task'); await capture.press('Enter');
-  await expect(page.getByRole('button', { name: 'Open Offline demo task', exact: true })).toBeVisible();
-  await context.setOffline(false);
+  expect(await page.evaluate(async () => (await caches.keys()).filter(key => key.startsWith('earnlearn-shell-')))).toEqual([]);
+  const worker = await page.request.get('/sw.js');
+  expect(await worker.text()).not.toContain("addEventListener('fetch'");
 });
 
 test('filters combine source, priority and history dates without losing context', async ({ page }) => {
@@ -183,7 +178,9 @@ test('production assets work under the Azure content security policy', async ({ 
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     await page.route('**/*', async route => {
-      if (route.request().isNavigationRequest()) {
+      if (new URL(route.request().url()).pathname === '/.auth/me') {
+        await route.fulfill({ json: { clientPrincipal: { userId: 'csp-test', identityProvider: 'aad', userRoles: ['authenticated', 'workhub_user'] } } });
+      } else if (route.request().isNavigationRequest()) {
         const response = await route.fetch();
         await route.fulfill({ response, headers: { ...response.headers(), ...headers } });
       } else await route.continue();

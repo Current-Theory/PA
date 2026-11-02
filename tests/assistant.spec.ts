@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './hosted-fixture';
 import AxeBuilder from '@axe-core/playwright';
 import type { ChatRequest, ChatResponse, FunctionCall } from '../src/assistant/contracts';
 import type { Task, Project } from '../src/lib/model';

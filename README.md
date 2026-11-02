@@ -122,7 +122,7 @@ npm run preview
 npm run build:portable
 ```
 
-The hosted production build is installable and caches its static shell only; API/auth responses are never cached. Offline mode clearly disables AI connectivity while records remain available.
+The hosted production build is installable and requires online Microsoft sign-in with the invited `workhub_user` role. It does not cache an offline app shell. API/auth responses are never cached. See [Azure preparation](docs/deployment.md) for access controls and connection requirements.
 
 [Download the current portable UI](https://github.com/Current-Theory/PA/raw/refs/heads/main/downloads/EarnLearn-Work-Hub.zip), extract it and open **EarnLearn Work Hub.html** in Edge/Chrome. It preserves manual workspace use and the assistant interface, but **cannot run secure AI without a hosted backend**. It contains no key and offers no external ChatGPT import workaround. Keep the same file location/profile to retain existing records.
 

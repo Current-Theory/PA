@@ -5,7 +5,7 @@ const origin = 'https://work-hub.example';
 const input = { note: 'Review the package requested by Victoria', workstream: 'Projects', workstreams: ['Projects'], today: '2026-10-30' };
 const proposal = { summary: 'Review the package.', tasks: [{ title: 'Review the package', workstream: 'Projects', notes: 'Requested by Victoria.', status: 'notStarted', priority: 'normal', dueDate: null, waitingFor: '', followUpDate: null, checklist: [], focusToday: true }] };
 type Request = Parameters<ReturnType<typeof hostedAssistant>>[0];
-const principal = (userId = 'approved-user', userRoles = ['anonymous', 'authenticated', 'work-hub-user']) => Buffer.from(JSON.stringify({ userId, userRoles })).toString('base64');
+const principal = (userId = 'approved-user', userRoles = ['anonymous', 'authenticated', 'workhub_user']) => Buffer.from(JSON.stringify({ userId, userRoles, identityProvider: 'aad' })).toString('base64');
 const request = (options: { identity?: string | null; action?: string; method?: string; from?: string; body?: unknown } = {}): Request => ({
   headers: new Headers({ 'content-type': 'application/json', origin: options.from ?? origin, ...(options.identity === null ? {} : { 'x-ms-client-principal': options.identity ?? principal() }) }),
   params: { action: options.action ?? 'capture' }, method: options.method ?? 'POST',
@@ -22,7 +22,7 @@ describe('managed Azure API authorisation', () => {
   });
   it('requires both authenticated and explicitly approved roles', async () => {
     const handler = hostedAssistant({ key: 'server-key', model: 'configured-model', origin }, async () => { throw new Error('must not call OpenAI'); });
-    for (const identity of [null, 'invalid', principal('user', ['authenticated']), principal('user', ['work-hub-user'])]) {
+    for (const identity of [null, 'invalid', principal('user', ['authenticated']), principal('user', ['workhub_user'])]) {
       expect((await handler(request({ identity }))).status).toBe(401);
     }
     expect(approvedPrincipal(principal())?.userId).toBe('approved-user');

@@ -8,7 +8,7 @@ const handler = hostedAssistant({
 });
 app.http('assistant', {
   route: 'assistant/{action}', methods: ['GET', 'POST'],
-  // The managed SWA gateway enforces work-hub-user before this handler, which
+  // The managed SWA gateway enforces workhub_user before this handler, which
   // also checks the injected principal. Do not publish as a standalone Function.
   authLevel: 'anonymous', handler
 });
