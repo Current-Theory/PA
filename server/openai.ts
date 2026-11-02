@@ -1,4 +1,4 @@
-import { safeOpenAIResult, type SafeOpenAIResult } from './openai-diagnostics.ts';
+import { safeOpenAIResult, type SafeOpenAIResult } from './openai-errors.ts';
 import { captureInstructions, captureSchema, parseTaskSuggestions, type CaptureRequest } from '../src/lib/capture.ts';
 
 export class AssistantError extends Error {

@@ -1,4 +1,4 @@
-import { safeOpenAIResult } from './openai-diagnostics.ts';
+import { safeOpenAIResult } from './openai-errors.ts';
 import { z } from 'zod';
 import { functionTools, isToolName } from '../src/assistant/tools.ts';
 import { validCalendarDate } from '../src/lib/capture.ts';
