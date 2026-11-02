@@ -80,7 +80,7 @@ export class MockTaskProvider implements TaskProvider {
           id, provider: this.id, providerTaskId: id, title: draft.title, notes: draft.notes,
           workstream: draft.workstream, status: draft.status, priority: draft.priority,
           dueDate: draft.dueDate, createdAt: new Date().toISOString(), completedAt: null,
-          sourceType: 'Manual', sourceName: 'Assisted capture · reviewed by you',
+          sourceType: 'Manual', sourceName: 'Conversation',
           checklist: draft.checklist.map(title => ({ id: crypto.randomUUID(), title, completed: false })),
           resources: [], waitingFor: draft.waitingFor, followUpDate: draft.followUpDate,
           completionNote: '', focusDate: draft.focusToday ? dateKey() : null, projectId: null, revision: 1, updatedAt: new Date().toISOString(), deletedAt: null
@@ -135,6 +135,6 @@ export class MockTaskProvider implements TaskProvider {
     });
   }
   async reset(): Promise<void> {
-    await this.mutate(state => { state.tasks = seedTasks(dateKey()).map(task => ({ ...task, provider: this.id, revision: 1, projectId: null, deletedAt: null })); state.workstreams = [...workstreamDefaults]; state.projects = []; state.conversation = undefined; state.receipts = {}; state.events = []; });
+    await this.mutate(state => { state.tasks = seedTasks(dateKey()).map(task => ({ ...task, provider: this.id, revision: 1, projectId: null, deletedAt: null })); state.workstreams = [...workstreamDefaults]; state.projects = []; state.dailyNotes = {}; state.conversation = undefined; state.receipts = {}; state.events = []; });
   }
 }

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 test.beforeEach(async ({ page }) => {
   await page.goto('/#today');
   await expect(page.getByRole('heading', { name: 'Focus Today' })).toBeVisible();
-  await expect(page.getByRole('status').filter({ hasText: 'Getting your workspace ready' })).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: 'Loading workspace' })).toHaveCount(0);
 });
 
 test('capture, edit, checklist, outcome, completion history and persistence', async ({ page }) => {
@@ -119,15 +119,15 @@ test('filters combine source, priority and history dates without losing context'
   await page.getByRole('link', { name: /^All Tasks/ }).click();
   await page.getByLabel('Filter source', { exact: true }).selectOption('Outlook');
   await page.getByLabel('Filter priority', { exact: true }).selectOption('high');
-  await expect(page.getByRole('button', { name: /^Open / })).toHaveCount(1);
+  await expect(page.locator('.task-list').getByRole('button', { name: /^Open / })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Open Review EWRB regulatory update', exact: true })).toBeVisible();
   await page.getByLabel('Filter due date', { exact: true }).selectOption('none');
   await expect(page.getByRole('heading', { name: 'No tasks found' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await expect(page.getByRole('button', { name: /^Open / })).toHaveCount(10);
+  await expect(page.locator('.task-list').getByRole('button', { name: /^Open / })).toHaveCount(10);
   await page.getByRole('link', { name: /^Completed/ }).click();
   await page.getByLabel('Completed from', { exact: true }).fill('2099-01-01');
-  await expect(page.getByRole('heading', { name: 'Your story is still being written' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No completed tasks' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await page.getByLabel('Search tasks', { exact: true }).fill('review sequence');
   await expect(page.getByRole('button', { name: 'Open Confirm handbook review schedule', exact: true })).toBeVisible();
@@ -146,13 +146,13 @@ test('unused workstreams can be renamed/removed and reset requires a choice', as
   await page.getByRole('button', { name: 'Remove workstream Programme Delivery', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Move all tasks');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Reset demo workspace' }).click();
-  await expect(page.getByRole('button', { name: 'Yes, restore demo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Reset workspace' }).click();
+  await expect(page.getByRole('button', { name: 'Yes, restore sample data' })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Yes, restore demo' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Reset demo workspace' }).click();
-  await page.getByRole('button', { name: 'Yes, restore demo' }).click();
-  await expect(page.getByRole('status')).toContainText('Fictional demo workspace restored');
+  await expect(page.getByRole('button', { name: 'Yes, restore sample data' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Reset workspace' }).click();
+  await page.getByRole('button', { name: 'Yes, restore sample data' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Sample workspace restored' })).toBeVisible();
 });
 
 test('laptop and narrow phone layouts fit, and the manifest icons are available', async ({ page, request }) => {

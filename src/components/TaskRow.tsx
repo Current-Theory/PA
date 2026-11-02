@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Flag, Mail, Users, Columns3, ListTodo, PenLine, Clock3, Star } from 'lucide-react';
+import { Check, ChevronRight, Flag, Mail, Users, Columns3, ListTodo, PenLine, Clock3, Pin } from 'lucide-react';
 import type { SourceType, Task } from '../lib/model';
 import { dateKey, formatDate } from '../lib/dates';
 
@@ -29,7 +29,7 @@ export function TaskRow({ task, today, onOpen, onComplete, onFocus, busy, finish
       {(task.priority === 'high' || task.priority === 'critical') && <span className={`priority priority-${task.priority}`}><Flag size={12} />{task.priority === 'critical' ? 'Critical' : 'High'}</span>}
       <SourceBadge source={task.sourceType} />
       {(task.dueDate || completed) && <span className={`task-date ${overdue ? 'overdue-date' : ''}`}>{completed ? `Done ${formatDate(task.completedAt ? dateKey(new Date(task.completedAt)) : null, today)}` : `${overdue ? 'Overdue · ' : ''}${formatDate(task.dueDate, today)}`}</span>}
-      {!completed && <button className={`icon-button focus-button ${task.focusDate === today ? 'selected' : ''}`} aria-label={`${task.focusDate === today ? 'Remove from' : 'Add to'} focus: ${task.title}`} aria-pressed={task.focusDate === today} onClick={() => onFocus(task)} disabled={busy}><Star size={16} fill={task.focusDate === today ? 'currentColor' : 'none'} /></button>}
+      {!completed && <button className={`icon-button focus-button ${task.focusDate === today ? 'selected' : ''}`} aria-label={`${task.focusDate === today ? 'Remove from' : 'Add to'} focus: ${task.title}`} aria-pressed={task.focusDate === today} onClick={() => onFocus(task)} disabled={busy}><Pin size={16} /></button>}
       <button className="icon-button row-open" aria-label={`Details for ${task.title}`} onClick={() => onOpen(task)}><ChevronRight size={16} /></button>
     </div>
   </article>;

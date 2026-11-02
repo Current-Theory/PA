@@ -1,6 +1,6 @@
 /* Provisional, handbook-inspired colours. Validate with official EarnLearn assets. */
 :root {
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-family: 'Segoe UI', Arial, sans-serif;
   color: #20383d;
   background: #f6f8f8;
   font-synthesis: none;
@@ -422,3 +422,133 @@ h1 { font-size: 36px; color: #15373d; letter-spacing: -1.5px; font-weight: 650; 
 @media (max-height: 800px) { .workspace-label { display: none; }.nav-eyebrow { margin-top: 26px; }.sync-status { padding-top: 13px; padding-bottom: 13px; }.sidebar .nav-item { min-height: 38px; }.sidebar-bottom { padding-top: 8px; } }
 @media (max-height: 850px) { .management-assistant { min-height: 360px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+/* Work surfaces: restrained hierarchy, readable controls, notebook beside tasks. */
+:root { font-family: 'Segoe UI', Arial, sans-serif; background: #f7f8f9; --sidebar-width: 222px; --navy: #172f38; --border: #dfe5e7; }
+.sidebar { padding-top: 28px; }
+.brand-word { font-size: 27px; }
+.brand-caption { letter-spacing: 3px; }
+.workspace-label { margin-top: 26px; }
+.nav-item { font-size: 13px; min-height: 42px; }
+.nav-count { background: transparent; font-size: 11px; }
+.nav-item.active::before { display: none; }
+.topbar { background: #fff; }
+.connections-link { font-size: 12px; }
+main { max-width: 1440px; padding: 32px 36px; }
+h1 { font-size: 28px; letter-spacing: -.7px; }
+.date-eyebrow { font-size: 11px; letter-spacing: .5px; text-transform: none; margin-bottom: 9px; }
+.page-heading { margin-bottom: 24px; }
+.quick-capture { border-radius: 6px; box-shadow: none; border: 1px solid #cdd7db; min-height: 56px; }
+.quick-capture input { font-size: 14px; }
+.capture-context { margin-bottom: 24px; }
+.capture-context label, .capture-context select { font-size: 12px; }
+.today-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); gap: 30px; align-items: start; }
+.today-sections { min-width: 0; order: 1; }
+.daily-notebook { order: 2; min-width: 0; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 18px; }
+.daily-notebook[hidden], .notebook-hidden { display: none; }
+.notebook-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.notebook-heading h2 { font-size: 16px; font-weight: 600; }
+.note-dates { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+.note-dates input { padding: 4px 6px; min-height: 32px; font-size: 12px; max-width: 145px; }
+.note-dates .icon-button { width: 30px; height: 32px; }
+.daily-notebook textarea { width: 100%; min-height: 300px; border: 0; padding: 0 2px; font-size: 14px; line-height: 1.9; background: transparent; }
+.notebook-footer { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 11px; color: #53646a; }
+.notebook-footer label { display: flex; gap: 8px; align-items: center; }
+.notebook-footer select { min-height: 32px; padding: 4px; font-size: 11px; max-width: 125px; }
+.daily-notebook .inline-error { font-size: 12px; margin-top: 12px; }
+.section-header { margin-bottom: 10px; }
+.section-header h2, .result-heading h2 { font-size: 15px; }
+.section-header h2 > svg { display: none; }
+.section-count { background: transparent; font-size: 11px; }
+.task-list { border-radius: 5px; box-shadow: none; }
+.task-row { padding: 15px; min-height: 76px; }
+.task-title { font-size: 14px; font-weight: 500; }
+.task-meta { font-size: 11px; gap: 7px; }
+.task-right { gap: 8px; }
+.task-date { font-size: 11px; }
+.task-right .source { display: none; } /* Source remains available in task details. */
+.workstream-dot { display: none; }
+.task-right .priority { font-size: 10px; }
+.focus-button { color: #697b80; }
+.focus-button.selected { color: var(--teal); }
+.section-empty { background: transparent; border: 0; padding: 12px 0; font-size: 13px; }
+.empty-state { padding: 36px 18px; background: transparent; border: 0; }
+.empty-state h2 { font-size: 18px; }
+.empty-state p { font-size: 13px; margin-top: 8px; }
+.empty-icon { background: transparent; }
+.workstream-grid { display: block; border-top: 1px solid var(--border); }
+.workstream-card { border: 0; border-bottom: 1px solid var(--border); background: transparent; border-radius: 0; padding: 20px 0; box-shadow: none; }
+.workstream-card h2 { font-size: 16px; margin-top: 6px; }
+.ws-card-top { float: right; gap: 14px; }
+.workstream-symbol { display: none; }
+.workstream-card p { font-size: 12px; }
+.workstream-card-actions { justify-content: flex-start; gap: 24px; margin-top: 12px; border-top: 0; padding-top: 0; }
+.waiting-card { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+.waiting-card-heading { background: transparent; padding: 12px 15px; font-size: 12px; }
+.waiting-context { font-size: 12px; }
+.settings-section { padding: 0 0 22px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+.settings-body .settings-section h3 { margin-top: 0; font-size: 15px; }
+.settings-body p { font-size: 13px; line-height: 1.7; }
+.settings-body .button { margin-top: 12px; }
+.settings-body .reset-area { border: 0; padding-top: 0; }
+.shortcuts { font-size: 12px; }
+.management-assistant { height: calc(100dvh - 230px); min-height: 430px; border-color: var(--border); border-radius: 6px; }
+.conversation-toolbar { font-size: 12px; padding: 15px 20px; }
+.conversation-toolbar .text-button { font-size: 12px; }
+.conversation-welcome { padding: 8px 0; margin: 0; }
+.conversation-welcome h2, .conversation-panel .conversation-welcome h2 { font-size: 16px; letter-spacing: 0; color: #53646a; font-weight: 400; }
+.assistant-setup { background: #f5f7f8; border-color: var(--border); padding: 12px 20px; }
+.assistant-setup > div { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.assistant-setup strong { font-size: 12px; }
+.chat-message > p { color: #263e45; font-size: 14px; line-height: 1.8; }
+.chat-user { background: #f3f6f7; border: 0; }
+.chat-speaker { font-size: 10px; letter-spacing: .5px; }
+.assistant-action { background: transparent; border-left-color: #c4d4d5; font-size: 12px; }
+.assistant-action .text-button { font-size: 11px; }
+.conversation-composer { border-color: #cbd6da; }
+.conversation-composer textarea { font-size: 14px; }
+.composer-actions > span { font-size: 11px; }
+.composer-actions .button { font-size: 12px; min-height: 36px; }
+.conversation-privacy { margin: 12px 22px; font-size: 11px; color: #53646a; }
+.conversation-privacy summary { cursor: pointer; width: fit-content; }
+.conversation-privacy p { margin-top: 8px; line-height: 1.7; }
+.conversation-panel .management-assistant { height: auto; }
+.note-search { margin-bottom: 24px; }
+.note-search h2 { font-size: 15px; margin-bottom: 10px; }
+.note-search-result { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-bottom: 1px solid var(--border); }
+.note-search-result strong { font-size: 12px; }
+.note-search-result span { font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 1200px) {
+  main { padding: 28px; }
+  .today-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .daily-notebook { order: 0; }
+  .daily-notebook textarea { min-height: 150px; }
+}
+@media (max-width: 760px) {
+  :root { --sidebar-width: 0px; }
+  main { padding: 24px 20px; }
+  .task-title { font-size: 14px; }
+  .task-meta { font-size: 11px; }
+  .workstream-card { padding: 16px 0; }
+  .management-assistant { height: calc(100dvh - 200px); }
+  .conversation-panel .management-assistant { height: auto; }
+  .composer-actions > span { display: none; }
+}
+@media (max-width: 480px) {
+  main { padding: 22px 16px; }
+  h1 { font-size: 26px; }
+  .quick-capture { margin-bottom: 10px; }
+  .quick-capture input { font-size: 14px; }
+  .daily-notebook { padding: 14px; }
+  .daily-notebook textarea { min-height: 160px; }
+  .notebook-heading { gap: 10px; }
+  .note-dates { gap: 0; }
+  .task-main { min-width: calc(100% - 40px); }
+  .task-right { margin-left: 28px; }
+  .task-right .priority, .task-date { font-size: 11px; }
+  .section-header h2 { font-size: 15px; }
+  .conversation-toolbar { font-size: 12px; }
+  .conversation-toolbar > span { max-width: none; }
+  .conversation-toolbar .text-button { font-size: 12px; }
+  .settings-body { padding: 20px; }
+}

@@ -1,3 +1,4 @@
+import { validCalendarDate } from '../lib/capture';
 import { dateKey } from '../lib/dates';
 import type { Conversation } from '../assistant/contracts';
 import type { Task } from '../lib/model';
@@ -10,6 +11,14 @@ import { MockTaskProvider } from './MockTaskProvider';
 export class WorkspaceProvider extends MockTaskProvider {
   constructor(storage: WorkspaceStorage = new DemoStorage(), today = dateKey()) { super(storage, today, 'local'); }
   async snapshot(): Promise<WorkspaceSnapshot> { await this.list(); return structuredClone(await this.load()); }
+  async saveDailyNote(date: string, text: string): Promise<void> {
+    if (!validCalendarDate(date) || text.length > 60000) throw new Error('Use a valid date and a note under 60,000 characters.');
+    await this.mutate(state => {
+      state.dailyNotes ??= {};
+      if (text) state.dailyNotes[date] = text;
+      else delete state.dailyNotes[date];
+    });
+  }
   async conversation(): Promise<Conversation> { return structuredClone((await this.snapshot()).conversation ?? { messages: [], recentTaskIds: [], recentProjectIds: [] }); }
   async saveConversation(conversation: Conversation): Promise<void> { await this.mutate(state => { state.conversation = structuredClone(conversation); }); }
   async transact<T>(key: string, fingerprint: string, fn: (state: WorkspaceSnapshot) => T): Promise<T> {

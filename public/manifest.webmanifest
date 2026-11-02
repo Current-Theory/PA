@@ -2,7 +2,7 @@
   "id": "/",
   "name": "EarnLearn Work Hub",
   "short_name": "Work Hub",
-  "description": "Your work, in focus.",
+  "description": "Tasks and daily notes.",
   "lang": "en-NZ",
   "start_url": "/",
   "scope": "/",

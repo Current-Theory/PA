@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { Sun, ListTodo, CalendarDays, Clock3, CircleCheck, Layers, Search, Settings as SettingsIcon, ChevronRight, Plus, ArrowUpRight, Menu, X, Star, ArrowRight, Check, WifiOff, Download, RefreshCw, CircleHelp, Inbox, Sparkles, TriangleAlert, FolderOpen, Trash2 } from 'lucide-react';
+import { Sun, ListTodo, CalendarDays, Clock3, CircleCheck, Layers, Search, Settings as SettingsIcon, ChevronRight, Plus, ArrowUpRight, Menu, X, Pin, ArrowRight, Check, WifiOff, Download, RefreshCw, Inbox, MessageSquare, TriangleAlert, FolderOpen, Trash2 } from 'lucide-react';
 import { registerPwa } from './lib/pwa';
 import { WorkspaceProvider } from './providers/WorkspaceProvider';
 import { TaskHub } from './providers/TaskHub';
@@ -13,6 +13,7 @@ import { Settings } from './components/Settings';
 import { Workstreams } from './components/Workstreams';
 import { useDialog } from './lib/useDialog';
 import { AssistantConversation, AssistantPanel } from './components/AssistantConversation';
+import { DailyNote } from './components/DailyNote';
 import { Projects } from './components/Projects';
 import { AssistantEngine } from './assistant/engine';
 import type { Conversation } from './assistant/contracts';
@@ -21,20 +22,20 @@ const workspace = new WorkspaceProvider();
 const hub = new TaskHub([workspace], 'local');
 const assistantEngine = new AssistantEngine(workspace);
 const pages = {
-  assistant: { label: 'Assistant', icon: Sparkles, subtitle: 'Tell me what’s happening. I’ll help keep the work in order.' },
-  projects: { label: 'Projects', icon: FolderOpen, subtitle: 'The bigger picture, with its context kept.' },
-  trash: { label: 'Trash', icon: Trash2, subtitle: 'Removed from your day, safely retained.' },
-  today: { label: 'Today', icon: Sun, subtitle: 'A little clarity. A productive day.' },
-  all: { label: 'All Tasks', icon: ListTodo, subtitle: 'Everything on your plate, in one place.' },
-  upcoming: { label: 'Upcoming', icon: CalendarDays, subtitle: 'See what’s ahead. Give yourself room to prepare.' },
-  waiting: { label: 'Waiting', icon: Clock3, subtitle: 'Keep the conversation moving.' },
-  completed: { label: 'Completed', icon: CircleCheck, subtitle: 'Work done. Context kept.' },
-  workstreams: { label: 'Workstreams', icon: Layers, subtitle: 'Bring structure to the different parts of your work.' },
-  search: { label: 'Search', icon: Search, subtitle: 'Find the task. Recover the context.' }
+  today: { label: 'Today', icon: Sun },
+  assistant: { label: 'Conversations', icon: MessageSquare },
+  all: { label: 'All Tasks', icon: ListTodo },
+  upcoming: { label: 'Upcoming', icon: CalendarDays },
+  waiting: { label: 'Waiting', icon: Clock3 },
+  completed: { label: 'Completed', icon: CircleCheck },
+  projects: { label: 'Projects', icon: FolderOpen },
+  workstreams: { label: 'Workstreams', icon: Layers },
+  trash: { label: 'Trash', icon: Trash2 },
+  search: { label: 'Search', icon: Search }
 };
 type Page = keyof typeof pages;
 interface InstallPrompt extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }
-function readPage(): Page { const key = window.location.hash.slice(1); return key in pages ? key as Page : 'assistant'; }
+function readPage(): Page { const key = window.location.hash.slice(1); return key in pages ? key as Page : 'today'; }
 
 export function App() {
   const [page, setPage] = useState<Page>(readPage);
@@ -43,6 +44,9 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [noteDate, setNoteDate] = useState(dateKey());
   const [today, setToday] = useState(dateKey());
   const [offline, setOffline] = useState(!navigator.onLine);
   const [selected, setSelected] = useState<Task | null>(null);
@@ -72,6 +76,7 @@ export function App() {
   const refresh = useCallback(async () => {
     const [nextTasks, snapshot] = await Promise.all([hub.list(), workspace.snapshot()]);
     setTasks(nextTasks); setWorkstreams(snapshot.workstreams); setProjects(snapshot.projects ?? []);
+    setDailyNotes(snapshot.dailyNotes ?? {});
     setTrash(snapshot.tasks.filter(task => task.deletedAt)); setConversation(snapshot.conversation ?? { messages: [], recentTaskIds: [], recentProjectIds: [] });
   }, []);
   const load = useCallback(async () => {
@@ -124,7 +129,7 @@ export function App() {
     finally { mutationLock.current = false; setBusy(false); }
   };
   const save = (task: Task, patch: TaskPatch): Promise<boolean> => act(async () => {
-    await hub.update(task, patch); await refresh(); setToast({ message: patch.status === 'completed' ? 'Task completed. Context kept in your work history.' : 'Task changes saved.' });
+    await hub.update(task, patch); await refresh(); setToast({ message: patch.status === 'completed' ? 'Task completed.' : 'Changes saved.' });
   });
   const complete = (task: Task) => {
     if (task.status === 'completed') { void save(task, { status: 'notStarted' }); return; }
@@ -134,7 +139,7 @@ export function App() {
       await new Promise(resolve => setTimeout(resolve, 320));
       setFinishing(ids => ids.filter(id => id !== task.id));
       await refresh();
-      setToast({ message: 'Task completed. A useful step forward.', task: updated, undo: async () => {
+      setToast({ message: 'Task completed.', task: updated, undo: async () => {
         await hub.update(updated, { status: task.status, completedAt: task.completedAt }); await refresh();
       } });
     });
@@ -151,7 +156,7 @@ export function App() {
     await act(async () => {
       const task = await hub.create(capture, currentCaptureWorkstream);
       setCapture(''); await refresh();
-      setToast({ message: 'Task captured and added to Focus Today.', task });
+      setToast({ message: 'Task added to Today.', task });
     });
   };
   const active = tasks.filter(t => t.status !== 'completed');
@@ -177,68 +182,71 @@ export function App() {
     if (filters.completedTo && (!task.completedAt || dateKey(new Date(task.completedAt)) > filters.completedTo)) return false;
     return true;
   };
+  const noteMatches = filters.text.trim() ? Object.entries({ ...dailyNotes, ...noteDrafts }).filter(([date, text]) => `${date} ${text}`.toLocaleLowerCase().includes(filters.text.toLocaleLowerCase())).sort(([a], [b]) => b.localeCompare(a)) : [];
   const byDue = (a: Task, b: Task) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999');
   const row = (task: Task, history = false) => <TaskRow key={task.id} task={task} today={today} onOpen={setSelected} onComplete={complete} onFocus={focus} busy={busy} finishing={finishing.includes(task.id)} history={history} />;
   const section = (title: string, items: Task[], icon: ReactNode, className = '', empty?: string, action?: ReactNode) => items.length || empty ? <section className={`task-section ${className}`} key={title}><div className="section-header"><h2>{icon}{title}<span className="section-count">{items.length}</span></h2>{action}</div>{items.length ? <div className="task-list">{items.map(t => row(t))}</div> : <div className="section-empty">{empty}</div>}</section> : null;
   const navLink = (key: Page) => {
     const Icon = pages[key].icon;
-    return <a href={`#${key}`} className={`nav-item ${page === key ? 'active' : ''}`} key={key} aria-current={page === key ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate(key); }}><Icon size={19} strokeWidth={1.7} /><span>{pages[key].label}</span>{counts[key] !== undefined && <span className="nav-count">{counts[key]}</span>}{key === 'search' && <kbd>⌘ K</kbd>}</a>;
+    return <a href={`#${key}`} className={`nav-item ${page === key ? 'active' : ''}`} key={key} aria-current={page === key ? 'page' : undefined} onClick={event => { event.preventDefault(); navigate(key); }}><Icon size={19} strokeWidth={1.7} /><span>{pages[key].label}</span>{counts[key] !== undefined && <span className="nav-count">{counts[key]}</span>}{key === 'search' && <kbd>Ctrl+K</kbd>}</a>;
   };
   return <div className="app-shell">
     <a className="skip-link" href="#main">Skip to workspace</a>
     {mobileNav && <div className="mobile-backdrop" onClick={() => setMobileNav(false)} aria-hidden="true" />}
     {mobileNav && <MobileNavFocus navRef={navRef} close={closeMobileNav} />}
     <aside id="navigation" ref={navRef} tabIndex={-1} role={mobileNav ? 'dialog' : undefined} aria-modal={mobileNav ? true : undefined} className={`sidebar ${mobileNav ? 'is-open' : ''}`} aria-label="Workspace navigation">
-      <a className="brand" href="#assistant" onClick={e => { e.preventDefault(); navigate('assistant'); }} aria-label="EarnLearn Work Hub home"><span className="brand-word"><span>Earn</span><span>Learn</span><b aria-hidden="true">+</b></span><span className="brand-caption">WORK HUB</span></a>
+      <a className="brand" href="#today" onClick={e => { e.preventDefault(); navigate('today'); }} aria-label="EarnLearn Work Hub home"><span className="brand-word"><span>Earn</span><span>Learn</span><b aria-hidden="true">+</b></span><span className="brand-caption">WORK HUB</span></a>
       <button className="mobile-close icon-button" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={22} /></button>
-      <div className="workspace-label"><span className="workspace-monogram">EL</span><div>My workspace<small>Programme management</small></div></div>
-      <span className="nav-eyebrow">YOUR WORK</span><nav aria-label="Main">{(['assistant', 'today', 'all', 'upcoming', 'waiting', 'completed', 'projects', 'workstreams'] as Page[]).map(navLink)}</nav>
-      <div className="sidebar-bottom"><div className="sidebar-message"><span className="geometry-plus">+</span><p>Less noise.<br /><strong>More progress.</strong></p></div><nav aria-label="Tools">{navLink('search')}{navLink('trash')}<button className="nav-item" onClick={() => { setSettings(true); setMobileNav(false); }}><SettingsIcon size={19} strokeWidth={1.7} /><span>Settings</span></button></nav><button className="sync-status" onClick={() => setSettings(true)}><span className={`status-dot ${offline ? 'offline' : ''}`} /><span>{offline ? 'Offline · workspace available' : 'Local workspace'}<small>{offline ? 'AI connection unavailable' : 'Saved on this device'}</small></span><ChevronRight size={14} /></button></div>
+      <nav aria-label="Main">{(['today', 'assistant', 'all', 'upcoming', 'waiting', 'completed', 'projects', 'workstreams'] as Page[]).map(navLink)}</nav>
+      <div className="sidebar-bottom"><nav aria-label="Tools">{navLink('search')}{navLink('trash')}<button className="nav-item" onClick={() => { setSettings(true); setMobileNav(false); }}><SettingsIcon size={19} strokeWidth={1.7} /><span>Settings</span></button></nav><button className="sync-status" onClick={() => setSettings(true)}><span className={`status-dot ${offline ? 'offline' : ''}`} /><span>{offline ? 'Offline' : 'Saved on this device'}<small>{'No cloud sync'}</small></span><ChevronRight size={14} /></button></div>
     </aside>
     <div className="workspace">
-      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobileNav} aria-controls="navigation" onClick={() => setMobileNav(!mobileNav)}><Menu size={21} /></button><span>My workspace</span><ChevronRight size={13} /><strong>{pages[page].label}</strong></div><div className="topbar-right"><button className="demo-pill" onClick={() => setSettings(true)}><span />Device-local<CircleHelp size={13} /></button><span className="topbar-divider" /><span className="profile-name">Ian Barnes<small>Programme Manager</small></span><span className="avatar" aria-label="Ian Barnes">IB</span></div></header>
-      {offline && <div className="connection-banner" role="status"><WifiOff size={16} />You’re offline. Your local workspace is available. AI and cloud connections need the Internet.</div>}
+      <header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={mobileNav} aria-controls="navigation" onClick={() => setMobileNav(!mobileNav)}><Menu size={21} /></button><span>My workspace</span><ChevronRight size={13} /><strong>{pages[page].label}</strong></div><div className="topbar-right"><button className="text-button connections-link" onClick={() => setSettings(true)}>Connections</button><span className="topbar-divider" /><span className="profile-name">Ian Barnes</span><span className="avatar" aria-label="Ian Barnes">IB</span></div></header>
+      {offline && <div className="connection-banner" role="status"><WifiOff size={16} />You’re offline. Conversations need an Internet connection.</div>}
       {updateAvailable && <div className="connection-banner"><RefreshCw size={16} />An update is ready. Save any open task before reloading.<button className="text-button" onClick={() => void updater.current?.()}>Reload app</button></div>}
       <main id="main" tabIndex={-1}>
-        <div className="page-heading"><div><div className="date-eyebrow">{new Intl.DateTimeFormat('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</div><h1>{(page === 'today' || page === 'assistant') ? <>Kia ora, Ian<span className="greeting-dot">.</span></> : pages[page].label}</h1><p>{page === 'today' ? <>Your work, <strong>in focus.</strong></> : pages[page].subtitle}</p></div><div className="heading-action">{page === 'today' && <span className="day-progress"><CircleCheck size={17} /><strong>{completedToday}</strong> completed today</span>}{installPrompt && <button className="button secondary install-button" onClick={async () => { await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}><Download size={16} />Install app</button>}</div></div>
-        <div className="demo-notice"><span className="demo-label">LOCAL</span><span>Your workspace is saved on this device. Fictional examples are included; use approved storage for confidential work.</span><button className="text-button" onClick={() => setSettings(true)}>Connections<ArrowUpRight size={13} /></button></div>
-        {page !== 'assistant' && <form className="quick-capture" onSubmit={e => void quickCapture(e)}><Plus size={23} aria-hidden="true" /><input ref={captureRef} aria-label="Quick capture task" value={capture} onChange={e => setCapture(e.target.value)} maxLength={500} placeholder="Add a task… clear your head, capture the next step." disabled={loading || !!loadError || busy} /><span className="capture-hint">Press <kbd>Enter ↵</kbd></span><button type="button" className="assistant-capture-button" aria-label="Talk to assistant" onClick={() => openAssistant()} disabled={loading || !!loadError || busy}><Sparkles size={16} /><span>Talk it through</span></button><button type="submit" className="capture-submit" aria-label="Add task" disabled={!capture.trim() || busy}><ArrowRight size={18} /></button></form>}
-        {page !== 'assistant' && !loading && !loadError && <div className="capture-context"><label>Capture into<select aria-label="Quick capture workstream" value={currentCaptureWorkstream} onChange={e => { setCaptureWorkstream(e.target.value); if (filters.workstream) setFilters(f => ({ ...f, workstream: e.target.value })); }}>{workstreams.map(w => <option key={w}>{w}</option>)}</select></label><span>Captured tasks appear in Focus Today.</span></div>}
-        {loading ? <div className="loading-state" role="status"><span className="loading-ring" />Getting your workspace ready…</div> : loadError ? <div className="empty-state" role="alert"><WifiOff size={30} /><h2>We couldn’t open your workspace</h2><p>{loadError}</p><button className="button primary" onClick={() => void load()}>Try again</button></div> : <>
+        <div className="page-heading"><div><div className="date-eyebrow">{new Intl.DateTimeFormat('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</div><h1>{(page === 'today' || page === 'assistant') ? <>Kia ora, Ian<span className="greeting-dot">.</span></> : pages[page].label}</h1></div><div className="heading-action">{page === 'today' && completedToday > 0 && <span className="day-progress"><CircleCheck size={17} /><strong>{completedToday}</strong> completed today</span>}{installPrompt && <button className="button secondary install-button" onClick={async () => { await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null); }}><Download size={16} />Install app</button>}</div></div>
+        {page !== 'assistant' && <form className="quick-capture" onSubmit={e => void quickCapture(e)}><Plus size={23} aria-hidden="true" /><input ref={captureRef} aria-label="Quick capture task" value={capture} onChange={e => setCapture(e.target.value)} maxLength={500} placeholder="Add task…" disabled={loading || !!loadError || busy} /><button type="button" className="assistant-capture-button" aria-label="Open conversation" onClick={() => openAssistant()} disabled={loading || !!loadError || busy}><MessageSquare size={16} /><span>Conversation</span></button><button type="submit" className="capture-submit" aria-label="Add task" disabled={!capture.trim() || busy}><ArrowRight size={18} /></button></form>}
+        {page !== 'assistant' && !loading && !loadError && <div className="capture-context"><label>Workstream<select aria-label="Quick capture workstream" value={currentCaptureWorkstream} onChange={e => { setCaptureWorkstream(e.target.value); if (filters.workstream) setFilters(f => ({ ...f, workstream: e.target.value })); }}>{workstreams.map(w => <option key={w}>{w}</option>)}</select></label></div>}
+        {loading ? <div className="loading-state" role="status"><span className="loading-ring" />Loading workspace…</div> : loadError ? <div className="empty-state" role="alert"><WifiOff size={30} /><h2>Could not open workspace</h2><p>{loadError}</p><button className="button primary" onClick={() => void load()}>Try again</button></div> : <>
           {page === 'assistant' && <AssistantConversation conversation={conversation} engine={assistantEngine} workspace={workspace} workstream={currentCaptureWorkstream} changed={refresh} openTask={setSelected} />}
           {page === 'projects' && <Projects projects={projects} tasks={tasks} openTasks={id => { navigate('all'); setProjectFilter(id); }} discuss={project => { if (project.id) void workspace.saveConversation({ ...conversation, recentProjectIds: [project.id] }).then(refresh); openAssistant(project.workstream || currentCaptureWorkstream); }} />}
-          {page === 'trash' && <div className="task-list trash-list">{trash.length ? trash.map(task => <article className="trash-row" key={task.id}><div><h2>{task.title}</h2><p>{task.workstream} · {task.status === 'completed' ? 'Completed context retained' : 'Notes and checklist retained'}</p></div><button className="button secondary" disabled={busy} onClick={() => void act(async () => { await workspace.restoreTask(task.id); await refresh(); setToast({ message: 'Task restored with its context.' }); })}>Restore task</button></article>) : <Empty title="Trash is empty" text="Deleted tasks stay recoverable here." />}</div>}
+          {page === 'trash' && <div className="task-list trash-list">{trash.length ? trash.map(task => <article className="trash-row" key={task.id}><div><h2>{task.title}</h2><p>{task.workstream} · {task.status === 'completed' ? 'Completed' : 'Deleted task'}</p></div><button className="button secondary" disabled={busy} onClick={() => void act(async () => { await workspace.restoreTask(task.id); await refresh(); setToast({ message: 'Task restored.' }); })}>Restore task</button></article>) : <Empty title="Trash is empty" text="Deleted tasks stay recoverable here." />}</div>}
+          <div className={page === 'today' ? 'today-layout' : 'notebook-hidden'}>
+          <DailyNote date={noteDate} today={today} notes={{ ...dailyNotes, ...noteDrafts }} workspace={workspace} change={(date, text) => setNoteDrafts(notes => ({ ...notes, [date]: text }))} saved={(date, text) => { setDailyNotes(notes => ({ ...notes, [date]: text })); setNoteDrafts(drafts => { if (drafts[date] !== text) return drafts; const next = { ...drafts }; delete next[date]; return next; }); }} selectDate={setNoteDate} visible={page === 'today'} />
           {page === 'today' && <div className="today-sections">
-            {section('Focus Today', focused, <Star size={18} />, 'focus-section', 'A clear space for your priorities. Add a task above or use the star beside any task.', <span className="section-hint">Chosen by you</span>)}
-            {section('Due Today', active.filter(t => t.dueDate === today && t.focusDate !== today && t.status !== 'waiting'), <CalendarDays size={18} />, '', 'Nothing else due today. A little breathing room.')}
+            {section('Focus Today', focused, <Pin size={18} />, 'focus-section', 'No tasks selected for today.')}
+            {section('Due Today', active.filter(t => t.dueDate === today && t.focusDate !== today && t.status !== 'waiting'), <CalendarDays size={18} />, '', 'Nothing else due today.')}
             {section('Overdue', active.filter(t => t.dueDate && t.dueDate < today && t.focusDate !== today && t.status !== 'waiting').sort(byDue), <Clock3 size={18} />, 'overdue-section')}
             {section('Waiting / Follow-up', waitingToday, <Clock3 size={18} />, '', undefined, <button className="text-button" onClick={() => navigate('waiting')}>View all<ArrowUpRight size={14} /></button>)}
-            {section('Upcoming', active.filter(t => t.dueDate && t.dueDate > today && t.focusDate !== today && t.status !== 'waiting').sort(byDue).slice(0, 3), <CalendarDays size={18} />, '', undefined, <button className="text-button" onClick={() => navigate('upcoming')}>Look ahead<ArrowUpRight size={14} /></button>)}
-            <div className="today-footer"><span className="footer-plus">+</span><p>One task at a time. You’re moving things forward.</p><span>EarnLearn Work Hub</span></div>
+            {section('Upcoming', active.filter(t => t.dueDate && t.dueDate > today && t.focusDate !== today && t.status !== 'waiting').sort(byDue).slice(0, 3), <CalendarDays size={18} />, '', undefined, <button className="text-button" onClick={() => navigate('upcoming')}>View all<ArrowUpRight size={14} /></button>)}
+
           </div>}
+          </div>
           {(page === 'all' || page === 'search' || page === 'completed') && <>
             {projectFilter && <div className="project-filter-chip">Project: {projects.find(project => project.id === projectFilter)?.name}<button className="text-button" onClick={() => setProjectFilter('')}>Clear project filter<X size={12} /></button></div>}
             <Filters value={filters} change={setFilters} workstreams={workstreams} history={page === 'completed'} searchPage={page === 'search'} />
+            {page === 'search' && noteMatches.length > 0 && <section className="note-search" aria-label="Note search results"><h2>Daily Notes</h2>{noteMatches.map(([date, text]) => <button className="note-search-result" key={date} onClick={() => { setNoteDate(date); navigate('today'); }}><strong>{date}</strong><span>{text.slice(0, 200)}</span></button>)}</section>}
             {(() => {
               const list = tasks.filter(t => (page !== 'completed' || t.status === 'completed') && matches(t)).sort(page === 'completed' ? (a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '') : byDue);
-              return <><div className="result-heading"><h2>{page === 'completed' ? 'Your work history' : page === 'search' ? 'Search results' : 'Your tasks'}<span className="section-count">{list.length}</span></h2><span>{page === 'completed' ? 'Completed, never deleted' : 'All sources, one view'}</span></div>{list.length ? <div className="task-list">{list.map(t => row(t, page === 'completed' || t.status === 'completed'))}</div> : <Empty title={page === 'completed' ? 'Your story is still being written' : 'No tasks found'} text="Try adjusting your filters, or capture a new task above." />}</>;
+              return <><div className="result-heading"><h2>{page === 'completed' ? 'History' : page === 'search' ? 'Search results' : 'Tasks'}<span className="section-count">{list.length}</span></h2></div>{list.length ? <div className="task-list">{list.map(t => row(t, page === 'completed' || t.status === 'completed'))}</div> : <Empty title={page === 'completed' ? 'No completed tasks' : 'No tasks found'} text="Try changing your filters." />}</>;
             })()}
           </>}
           {page === 'upcoming' && (() => {
             const list = active.filter(t => t.dueDate).sort(byDue);
-            return list.length ? ['Overdue', 'Today', 'Tomorrow', 'This week', 'Next week', 'Later'].map(group => section(group, list.filter(t => upcomingGroup(t.dueDate!, today) === group), <CalendarDays size={17} />)) : <Empty title="Room for what’s next" text="Add a due date to a task and it will appear in your timeline." />;
+            return list.length ? ['Overdue', 'Today', 'Tomorrow', 'This week', 'Next week', 'Later'].map(group => section(group, list.filter(t => upcomingGroup(t.dueDate!, today) === group), <CalendarDays size={17} />)) : <Empty title="No scheduled tasks" text="Tasks with due dates appear here." />;
           })()}
           {page === 'waiting' && (() => {
             const waiting = active.filter(t => t.status === 'waiting');
-            return waiting.length ? <><div className="waiting-intro"><Clock3 size={20} /><p>You’ve done your part. Keep track of what comes next.</p></div>{waiting.sort((a, b) => (a.followUpDate ?? '9999').localeCompare(b.followUpDate ?? '9999')).map(t => <section className="waiting-card" key={t.id}><div className="waiting-card-heading"><span><span className={`status-dot ${t.followUpDate && t.followUpDate <= today ? 'follow-up' : ''}`} />Waiting on <strong>{t.waitingFor || 'a response'}</strong></span><span className={t.followUpDate && t.followUpDate <= today ? 'follow-up-date' : ''}>{t.followUpDate ? `${t.followUpDate <= today ? 'Follow up · ' : 'Follow up '}${formatDate(t.followUpDate, today)}` : 'No follow-up set'}</span></div>{row(t)}{t.notes && <p className="waiting-context">{t.notes}</p>}</section>)}</> : <Empty title="Nothing waiting on someone else" text="Set a task to Waiting and add a follow-up date to keep it in view." />;
+            return waiting.length ? <>{waiting.sort((a, b) => (a.followUpDate ?? '9999').localeCompare(b.followUpDate ?? '9999')).map(t => <section className="waiting-card" key={t.id}><div className="waiting-card-heading"><span><span className={`status-dot ${t.followUpDate && t.followUpDate <= today ? 'follow-up' : ''}`} />Waiting on <strong>{t.waitingFor || 'a response'}</strong></span><span className={t.followUpDate && t.followUpDate <= today ? 'follow-up-date' : ''}>{t.followUpDate ? `${t.followUpDate <= today ? 'Follow up · ' : 'Follow up '}${formatDate(t.followUpDate, today)}` : 'No follow-up set'}</span></div>{row(t)}{t.notes && <p className="waiting-context">{t.notes}</p>}</section>)}</> : <Empty title="Nothing waiting" text="Tasks marked Waiting appear here." />;
           })()}
           {page === 'workstreams' && <Workstreams names={workstreams} tasks={tasks} busy={busy} capture={openAssistant} open={name => { navigate('all'); setCaptureWorkstream(name); setFilters({ ...emptyFilters, workstream: name }); }} add={name => act(async () => { await workspace.addWorkstream(name); await refresh(); setToast({ message: 'Workstream added.' }); })} rename={(from, to) => act(async () => { await workspace.renameWorkstream(from, to); await refresh(); setToast({ message: 'Workstream renamed. Tasks updated.' }); })} remove={name => act(async () => { await workspace.removeWorkstream(name); await refresh(); setToast({ message: 'Empty workstream removed.' }); })} />}
         </>}
       </main>
     </div>
-    {selected && <TaskDrawer key={selected.id} task={selected} projects={projects} workstreams={workstreams} today={today} fields={hub.capabilities(selected.provider).writableFields} save={save} remove={task => act(async () => { await workspace.trashTask(task); await refresh(); setToast({ message: 'Moved to Trash. Notes and history retained.', undo: async () => { await workspace.restoreTask(task.id); await refresh(); } }); })} close={closeDrawer} busy={busy} />}
+    {selected && <TaskDrawer key={selected.id} task={selected} projects={projects} workstreams={workstreams} today={today} fields={hub.capabilities(selected.provider).writableFields} save={save} remove={task => act(async () => { await workspace.trashTask(task); await refresh(); setToast({ message: 'Moved to Trash.', undo: async () => { await workspace.restoreTask(task.id); await refresh(); } }); })} close={closeDrawer} busy={busy} />}
     {assistantOpen && <AssistantPanel close={closeAssistant} conversation={conversation} engine={assistantEngine} workspace={workspace} workstream={assistantWorkstream || currentCaptureWorkstream} changed={refresh} openTask={task => { setAssistantOpen(false); setSelected(task); }} />}
-    {settings && <Settings close={closeSettings} offline={offline} backup={async () => { await act(async () => { const state = await workspace.snapshot(); const blob = new Blob([JSON.stringify({ format: 'earnlearn-workspace', version: 2, exportedAt: new Date().toISOString(), tasks: state.tasks, projects: state.projects, workstreams: state.workstreams, events: state.events }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `work-hub-backup-${dateKey()}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }); }} reset={() => act(async () => { if (assistantEngine.isRunning) throw new Error('Stop the assistant before replacing the workspace.'); await workspace.reset(); await refresh(); setFilters({ ...emptyFilters }); setToast({ message: 'Fictional demo workspace restored.' }); })} />}
+    {settings && <Settings close={closeSettings} offline={offline} backup={async () => { await act(async () => { const state = await workspace.snapshot(); const blob = new Blob([JSON.stringify({ format: 'earnlearn-workspace', version: 2, exportedAt: new Date().toISOString(), tasks: state.tasks, projects: state.projects, dailyNotes: state.dailyNotes ?? {}, workstreams: state.workstreams, events: state.events }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `work-hub-backup-${dateKey()}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }); }} reset={() => act(async () => { if (assistantEngine.isRunning) throw new Error('Stop the assistant before replacing the workspace.'); await workspace.reset(); setNoteDrafts({}); await refresh(); setFilters({ ...emptyFilters }); setToast({ message: 'Sample workspace restored.' }); })} />}
     {toast && <div className="toast" role={toast.error ? 'alert' : 'status'}>{toast.error ? <TriangleAlert size={17} /> : <Check size={17} />}<span>{toast.message}</span>{toast.task && <button onClick={() => { setSelected(toast.task!); setToast(null); }}>Add details</button>}{toast.undo && <button disabled={busy} onClick={() => void act(async () => { await toast.undo!(); setToast(null); })}>Undo</button>}<button className="icon-button" aria-label="Dismiss notification" onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div>;
 }
@@ -249,5 +257,5 @@ function MobileNavFocus({ navRef, close }: { navRef: RefObject<HTMLElement | nul
 }
 
 function Empty({ title, text }: { title: string; text: string }) {
-  return <div className="empty-state"><span className="empty-icon"><Inbox size={28} /><Sparkles size={13} /></span><h2>{title}</h2><p>{text}</p></div>;
+  return <div className="empty-state"><span className="empty-icon"><Inbox size={24} /></span><h2>{title}</h2><p>{text}</p></div>;
 }

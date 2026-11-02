@@ -7,7 +7,7 @@ export function Filters({ value, change, workstreams, history, searchPage }: {
   const set = (key: keyof FiltersState, next: string) => change({ ...value, [key]: next });
   const active = Object.values(value).some(Boolean);
   return <div className="filters">
-    <div className="search-field"><Search size={17} /><input id="task-search" aria-label="Search tasks" placeholder={history ? 'Search your work history…' : 'Search titles, notes, people…'} value={value.text} onChange={e => set('text', e.target.value)} /></div>
+    <div className="search-field"><Search size={17} /><input id="task-search" aria-label={searchPage ? 'Search tasks and notes' : 'Search tasks'} placeholder={searchPage ? 'Search tasks and notes…' : history ? 'Search your work history…' : 'Search titles, notes, people…'} value={value.text} onChange={e => set('text', e.target.value)} /></div>
     <div className="filter-controls">
       <select aria-label="Filter workstream" value={value.workstream} onChange={e => set('workstream', e.target.value)}><option value="">All workstreams</option>{workstreams.map(w => <option key={w}>{w}</option>)}</select>
       <select aria-label="Filter source" value={value.source} onChange={e => set('source', e.target.value)}><option value="">All sources</option>{sourceTypes.map(s => <option key={s}>{s}</option>)}</select>

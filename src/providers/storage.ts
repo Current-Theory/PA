@@ -2,6 +2,7 @@ export interface WorkspaceSnapshot {
   version?: number;
   tasks: import('../lib/model').Task[];
   workstreams: string[];
+  dailyNotes?: Record<string, string>;
   projects?: import('../lib/model').Project[];
   conversation?: import('../assistant/contracts').Conversation;
   receipts?: Record<string, { fingerprint: string; result: unknown }>;
@@ -28,7 +29,7 @@ export class DemoStorage implements WorkspaceStorage {
       return await new Promise((resolve, reject) => {
         const request = db.transaction('workspace').objectStore('workspace').get('demo');
         request.onsuccess = () => resolve(request.result as WorkspaceSnapshot | undefined);
-        request.onerror = () => reject(new Error('Could not read your demo workspace.'));
+        request.onerror = () => reject(new Error('Could not read your workspace.'));
       });
     } finally { db.close(); }
   }
